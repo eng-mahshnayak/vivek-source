@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -16,7 +16,8 @@ import { styled } from "@mui/material/styles";
 import {
   ArrowBack,
   Save as SaveIcon,
-  PersonAdd,
+  Edit as EditIcon,
+  Warning,
 } from "@mui/icons-material";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -54,9 +55,9 @@ const StyledTextField = styled(TextField)(() => ({
     color: "#ffffff",
     minHeight: "42px",
     "& fieldset": { borderColor: "rgba(255, 255, 255, 0.1)" },
-    "&:hover fieldset": { borderColor: "rgba(52, 211, 153, 0.4)" },
+    "&:hover fieldset": { borderColor: "rgba(251, 191, 36, 0.4)" },
     "&.Mui-focused fieldset": {
-      borderColor: "#34d399",
+      borderColor: "#fbbf24",
       borderWidth: "1.5px",
     },
   },
@@ -82,8 +83,8 @@ const StyledTextarea = styled("textarea")(() => ({
   resize: "vertical",
   transition: "all 0.2s ease",
   "&:focus": {
-    borderColor: "#34d399",
-    boxShadow: "0 0 0 3px rgba(52, 211, 153, 0.1)",
+    borderColor: "#fbbf24",
+    boxShadow: "0 0 0 3px rgba(251, 191, 36, 0.1)",
   },
   "&::placeholder": { color: "#6b7280" },
 }));
@@ -99,10 +100,10 @@ const StyledSelect = styled(Select)(() => ({
     borderColor: "rgba(255, 255, 255, 0.1)",
   },
   "&:hover .MuiOutlinedInput-notchedOutline": {
-    borderColor: "rgba(52, 211, 153, 0.4)",
+    borderColor: "rgba(251, 191, 36, 0.4)",
   },
   "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-    borderColor: "#34d399",
+    borderColor: "#fbbf24",
     borderWidth: "1.5px",
   },
   "& .MuiSvgIcon-root": { color: "#9ca3af" },
@@ -118,20 +119,21 @@ const FieldLabel = styled(Typography)(() => ({
 }));
 
 const SectionTitle = styled(Typography)(() => ({
-  color: "#34d399",
+  color: "#fbbf24",
   fontWeight: 800,
   fontSize: "0.8rem",
   letterSpacing: 1.2,
   textTransform: "uppercase",
   marginBottom: "16px",
   paddingBottom: "10px",
-  borderBottom: "1px solid rgba(52, 211, 153, 0.15)",
+  borderBottom: "1px solid rgba(251, 191, 36, 0.15)",
 }));
 
 // ===================== MAIN =====================
 
-const CustomerCreate: React.FC = () => {
+const CustomerUpdate: React.FC = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
 
   const [companyName, setCompanyName] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -140,9 +142,65 @@ const CustomerCreate: React.FC = () => {
   const [status, setStatus] = useState("active");
   const [notes, setNotes] = useState("");
 
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
-  const handleSave = async () => {
+  // ===================== FETCH CUSTOMER =====================
+  useEffect(() => {
+    if (!id) {
+      setNotFound(true);
+      setFetchLoading(false);
+      return;
+    }
+
+    const fetchCustomer = async () => {
+      try {
+        setFetchLoading(true);
+
+        const res = await axios.get(
+          `${API_URL}/customer/${id}`,
+          getAuthHeaders()
+        );
+
+        if (res.data?.success === true) {
+          const c = res.data.data;
+          setCompanyName(c.companyName || "");
+          setDisplayName(c.displayName || "");
+          setPhone(c.phone || "");
+          setBillingAddress(c.billingAddress || "");
+          setStatus(c.status || "active");
+          setNotes(c.notes || "");
+        } else if (res.data?.message === "Unauthorized") {
+          toast.error("Session expired! Please login again");
+          localStorage.removeItem("erptoken");
+          setTimeout(() => navigate("/login"), 1500);
+        } else {
+          toast.error(res.data?.message || "Customer not found");
+          setNotFound(true);
+        }
+      } catch (error: any) {
+        console.error("Fetch error:", error);
+        if (error.response?.data?.message === "Unauthorized") {
+          localStorage.removeItem("erptoken");
+          navigate("/login");
+        } else {
+          toast.error(
+            error.response?.data?.message || "Failed to load customer"
+          );
+          setNotFound(true);
+        }
+      } finally {
+        setFetchLoading(false);
+      }
+    };
+
+    fetchCustomer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // ===================== UPDATE =====================
+  const handleUpdate = async () => {
     // Validation
     if (!companyName.trim()) {
       toast.error("Company name is required");
@@ -169,14 +227,14 @@ const CustomerCreate: React.FC = () => {
         notes: notes.trim(),
       };
 
-      const res = await axios.post(
-        `${API_URL}/customer`,
+      const res = await axios.put(
+        `${API_URL}/customer/${id}`,
         payload,
         getAuthHeaders()
       );
 
       if (res.data?.success === true) {
-        toast.success("Customer created successfully! 🎉");
+        toast.success("Customer updated successfully! 🎉");
         setTimeout(() => navigate("/customer-entry"), 900);
       } else if (res.data?.message === "Unauthorized") {
         toast.error("Session expired! Please login again");
@@ -186,11 +244,11 @@ const CustomerCreate: React.FC = () => {
         toast.error(
           res.data?.errors?.[0] ||
             res.data?.message ||
-            "Failed to create customer"
+            "Failed to update customer"
         );
       }
     } catch (error: any) {
-      console.error("Create error:", error);
+      console.error("Update error:", error);
       if (!error.response) {
         toast.error("Network error! Please check your connection");
       } else if (error.response?.data?.message === "Unauthorized") {
@@ -201,7 +259,7 @@ const CustomerCreate: React.FC = () => {
         toast.error(
           error.response?.data?.errors?.[0] ||
             error.response?.data?.message ||
-            "Failed to create customer"
+            "Failed to update customer"
         );
       }
     } finally {
@@ -209,6 +267,73 @@ const CustomerCreate: React.FC = () => {
     }
   };
 
+  // ===================== LOADING =====================
+  if (fetchLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          bgcolor: "#090d16",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <CircularProgress sx={{ color: "#fbbf24" }} />
+        <Typography sx={{ color: "#9ca3af" }}>Loading customer...</Typography>
+      </Box>
+    );
+  }
+
+  // ===================== NOT FOUND =====================
+  if (notFound) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          bgcolor: "#090d16",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 3,
+        }}
+      >
+        <Box
+          sx={{
+            bgcolor: "#111827",
+            border: "1px solid rgba(244, 63, 94, 0.3)",
+            borderRadius: "16px",
+            p: 4,
+            textAlign: "center",
+            maxWidth: 400,
+          }}
+        >
+          <Warning sx={{ fontSize: 48, color: "#f43f5e", mb: 1 }} />
+          <Typography sx={{ color: "#ffffff", fontWeight: 700, mb: 2 }}>
+            Customer not found
+          </Typography>
+          <Button
+            onClick={() => navigate("/customers")}
+            variant="contained"
+            sx={{
+              bgcolor: "#f43f5e",
+              color: "#ffffff",
+              textTransform: "none",
+              fontWeight: 700,
+              borderRadius: "10px",
+              "&:hover": { bgcolor: "#e11d48" },
+            }}
+          >
+            Back to Customers
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
+  // ===================== MAIN RENDER =====================
   return (
     <Box
       sx={{
@@ -226,7 +351,7 @@ const CustomerCreate: React.FC = () => {
             <Button
               variant="outlined"
               startIcon={<ArrowBack />}
-              onClick={() => navigate("/customer-entry")}
+              onClick={() => navigate("/customers")}
               sx={{
                 color: "#e5e7eb",
                 borderColor: "rgba(255, 255, 255, 0.15)",
@@ -237,9 +362,9 @@ const CustomerCreate: React.FC = () => {
                 py: 0.9,
                 fontSize: "0.8rem",
                 "&:hover": {
-                  borderColor: "#34d399",
-                  color: "#34d399",
-                  bgcolor: "rgba(52, 211, 153, 0.08)",
+                  borderColor: "#fbbf24",
+                  color: "#fbbf24",
+                  bgcolor: "rgba(251, 191, 36, 0.08)",
                 },
               }}
             >
@@ -252,26 +377,26 @@ const CustomerCreate: React.FC = () => {
                   width: 40,
                   height: 40,
                   borderRadius: "10px",
-                  bgcolor: "#132e29",
-                  color: "#34d399",
+                  bgcolor: "#332208",
+                  color: "#fbbf24",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <PersonAdd />
+                <EditIcon />
               </Box>
               <Box>
                 <Typography
                   variant="caption"
                   sx={{
-                    color: "#34d399",
+                    color: "#fbbf24",
                     letterSpacing: 0.5,
                     fontSize: "0.7rem",
                     fontWeight: 700,
                   }}
                 >
-                  Customer Management
+                  Customer Management · Edit Mode
                 </Typography>
                 <Typography
                   variant="h5"
@@ -281,7 +406,7 @@ const CustomerCreate: React.FC = () => {
                     letterSpacing: 0.5,
                   }}
                 >
-                  NEW CUSTOMER
+                  UPDATE CUSTOMER
                 </Typography>
               </Box>
             </Box>
@@ -293,7 +418,6 @@ const CustomerCreate: React.FC = () => {
           <SectionTitle>Business Information</SectionTitle>
 
           <Grid container spacing={2.5}>
-            {/* COMPANY NAME */}
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FieldLabel>
                 Company Name <span style={{ color: "#f43f5e" }}>*</span>
@@ -306,7 +430,6 @@ const CustomerCreate: React.FC = () => {
               />
             </Grid>
 
-            {/* DISPLAY NAME */}
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FieldLabel>Display Name</FieldLabel>
               <StyledTextField
@@ -317,7 +440,6 @@ const CustomerCreate: React.FC = () => {
               />
             </Grid>
 
-            {/* STATUS */}
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FieldLabel>Status</FieldLabel>
               <StyledSelect
@@ -331,10 +453,10 @@ const CustomerCreate: React.FC = () => {
                       "& .MuiMenuItem-root": {
                         color: "#e5e7eb",
                         fontSize: "0.85rem",
-                        "&:hover": { bgcolor: "rgba(52, 211, 153, 0.1)" },
+                        "&:hover": { bgcolor: "rgba(251, 191, 36, 0.1)" },
                         "&.Mui-selected": {
-                          bgcolor: "rgba(52, 211, 153, 0.15)",
-                          color: "#34d399",
+                          bgcolor: "rgba(251, 191, 36, 0.15)",
+                          color: "#fbbf24",
                         },
                       },
                     },
@@ -354,7 +476,6 @@ const CustomerCreate: React.FC = () => {
           </Box>
 
           <Grid container spacing={2.5}>
-            {/* PHONE */}
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <FieldLabel>
                 Phone <span style={{ color: "#f43f5e" }}>*</span>
@@ -368,7 +489,6 @@ const CustomerCreate: React.FC = () => {
               />
             </Grid>
 
-            {/* BILLING ADDRESS */}
             <Grid size={{ xs: 12, sm: 12, md: 8 }}>
               <FieldLabel>Billing Address</FieldLabel>
               <StyledTextField
@@ -380,7 +500,6 @@ const CustomerCreate: React.FC = () => {
             </Grid>
           </Grid>
 
-          {/* NOTES */}
           <Box mt={3}>
             <FieldLabel>Notes</FieldLabel>
             <StyledTextarea
@@ -436,33 +555,33 @@ const CustomerCreate: React.FC = () => {
               variant="contained"
               startIcon={
                 saving ? (
-                  <CircularProgress size={16} sx={{ color: "#ffffff" }} />
+                  <CircularProgress size={16} sx={{ color: "#0d1527" }} />
                 ) : (
                   <SaveIcon />
                 )
               }
-              onClick={handleSave}
+              onClick={handleUpdate}
               disabled={saving}
               sx={{
-                bgcolor: "#10b981",
-                color: "#ffffff",
+                bgcolor: "#fbbf24",
+                color: "#0d1527",
                 fontWeight: 800,
                 textTransform: "none",
                 borderRadius: "10px",
                 px: 3,
                 py: 1.2,
-                boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+                boxShadow: "0 4px 14px rgba(251, 191, 36, 0.3)",
                 "&:hover": {
-                  bgcolor: "#059669",
-                  boxShadow: "0 8px 20px rgba(16, 185, 129, 0.4)",
+                  bgcolor: "#f59e0b",
+                  boxShadow: "0 8px 20px rgba(251, 191, 36, 0.4)",
                 },
                 "&.Mui-disabled": {
-                  bgcolor: "rgba(16, 185, 129, 0.3)",
+                  bgcolor: "rgba(251, 191, 36, 0.3)",
                   color: "rgba(255, 255, 255, 0.5)",
                 },
               }}
             >
-              {saving ? "Creating..." : "Create Customer"}
+              {saving ? "Updating..." : "Update Customer"}
             </Button>
           </Box>
         </FormCard>
@@ -471,4 +590,4 @@ const CustomerCreate: React.FC = () => {
   );
 };
 
-export default CustomerCreate;
+export default CustomerUpdate;

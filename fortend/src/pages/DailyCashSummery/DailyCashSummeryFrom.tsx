@@ -1,8 +1,3 @@
-
-
-
-
-
 import React, { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -13,27 +8,28 @@ import {
   Typography,
   Grid,
   Card,
-  CardContent,
-  CardHeader,
-  Divider,
+
   InputAdornment,
   Zoom,
   Tooltip,
+  Chip,
 } from "@mui/material";
 
 import { useNavigate } from "react-router-dom";
 import {
   AttachMoney as MoneyIcon,
-  Savings as SavingsIcon,
-  AccountBalance as AccountBalanceIcon,
-  Payment as PaymentIcon,
+  
   AddCircle as AddCircleIcon,
   Clear as ClearIcon,
   CalendarToday as CalendarIcon,
+  FiberManualRecord,
+  ArrowBack,
+  Refresh,
 } from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 
 interface CashForm {
+  note2000: number;
   note500: number;
   note200: number;
   note100: number;
@@ -47,92 +43,121 @@ interface CashForm {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Styled Components
-const FormCard = styled(Card)(() => ({
-  borderRadius: "20px",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-  overflow: "hidden",
-  background: "#ffffff",
-  transition: "all 0.3s ease",
-  width: "100%",
-  maxWidth: "950px",
-  margin: "0 auto",
+// ===================== STYLED DARK COMPONENTS =====================
+
+const DarkBanner = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "20px 24px",
+  marginBottom: "16px",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
 }));
 
-const FormHeader = styled(CardHeader)(() => ({
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  color: "white",
-  padding: "12px 20px", // Reduced padding
-  "& .MuiCardHeader-title": {
-    fontSize: "1.3rem",
-    fontWeight: 600,
+const FormCard = styled(Card)(() => ({
+  borderRadius: "16px",
+  backgroundColor: "#0d1527",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+  overflow: "hidden",
+  width: "100%",
+}));
+
+const SectionCard = styled(Box)(() => ({
+  backgroundColor: "#111827",
+  borderRadius: "12px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "16px 20px",
+}));
+
+const RowCard = styled(Box)<{ isactive?: boolean }>(({ isactive }) => ({
+  backgroundColor: isactive ? "rgba(16, 185, 129, 0.05)" : "#0d1527",
+  borderRadius: "10px",
+  border: isactive
+    ? "1px solid rgba(16, 185, 129, 0.3)"
+    : "1px solid rgba(255, 255, 255, 0.05)",
+  padding: "12px 16px",
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  transition: "all 0.2s ease",
+  "&:hover": {
+    borderColor: "rgba(16, 185, 129, 0.3)",
   },
-  "& .MuiCardHeader-subheader": {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: "0.8rem",
-    marginTop: "2px",
-  },
-  "& .MuiCardHeader-avatar": {
-    marginRight: "10px",
-  },
+}));
+
+const DenomLabel = styled(Typography)(() => ({
+  color: "#e5e7eb",
+  fontWeight: 700,
+  fontSize: "0.9rem",
+  minWidth: "70px",
 }));
 
 const StyledTextField = styled(TextField)(() => ({
+  width: "100px",
   "& .MuiOutlinedInput-root": {
-    borderRadius: "10px",
-    backgroundColor: "#ffffff",
-    height: "42px", // Reduced height
-    transition: "all 0.2s ease",
-    "&:hover": {
-      transform: "translateY(-1px)",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+    borderRadius: "8px",
+    backgroundColor: "#090d16",
+    color: "#ffffff",
+    height: "40px",
+    "& fieldset": {
+      borderColor: "rgba(255, 255, 255, 0.1)",
     },
-    "&.Mui-focused": {
-      transform: "translateY(-1px)",
-      boxShadow: "0 6px 16px rgba(102,126,234,0.15)",
+    "&:hover fieldset": {
+      borderColor: "rgba(16, 185, 129, 0.4)",
     },
-  },
-  "& .MuiInputLabel-root": {
-    fontWeight: 500,
-    fontSize: "0.85rem",
-    transform: "translate(14px, 12px) scale(1)",
-    "&.MuiInputLabel-shrink": {
-      transform: "translate(14px, -8px) scale(0.75)",
+    "&.Mui-focused fieldset": {
+      borderColor: "#10b981",
+      borderWidth: "1.5px",
     },
   },
   "& .MuiOutlinedInput-input": {
-    padding: "10px 12px",
+    color: "#ffffff",
     fontSize: "0.9rem",
+    fontWeight: 700,
+    textAlign: "center",
+    padding: "8px 10px",
+    "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
+      WebkitAppearance: "none",
+      margin: 0,
+    },
+    "&[type=number]": {
+      MozAppearance: "textfield",
+    },
   },
 }));
 
-const TotalCard = styled(Card)(() => ({
-  background: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
-  color: "white",
-  borderRadius: "14px",
-  boxShadow: "0 8px 20px rgba(17,153,142,0.25)",
-  transition: "all 0.3s ease",
-  height: "100%",
-  minHeight: "80px", // Reduced height
-  display: "flex",
-  alignItems: "center",
-}));
+const TotalRow = styled(Box)<{ variant?: "cash" | "count" }>(
+  ({ variant }) => ({
+    backgroundColor: variant === "cash" ? "#111827" : "rgba(192, 132, 252, 0.15)",
+    borderRadius: "10px",
+    border:
+      variant === "cash"
+        ? "1px solid rgba(16, 185, 129, 0.3)"
+        : "1px solid rgba(192, 132, 252, 0.3)",
+    padding: "14px 20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+  })
+);
 
 const ActionButton = styled(Button)(() => ({
   borderRadius: "10px",
-  padding: "8px 20px",
-  fontSize: "0.9rem",
-  fontWeight: 600,
+  padding: "10px 20px",
+  fontSize: "0.85rem",
+  fontWeight: 700,
   textTransform: "none",
   transition: "all 0.3s ease",
-  minWidth: "100px",
+  minWidth: "110px",
   "&:hover": {
     transform: "translateY(-2px)",
-    boxShadow: "0 8px 20px rgba(0,0,0,0.15)",
   },
 }));
 
-// Function to get today's date in YYYY-MM-DD format
+// ===================== HELPERS =====================
+
 const getTodayDate = (): string => {
   const today = new Date();
   const year = today.getFullYear();
@@ -141,8 +166,22 @@ const getTodayDate = (): string => {
   return `${year}-${month}-${day}`;
 };
 
-const DailyCashSummaryForm: React.FC<{ refresh: () => void }> = () => {
+const denominations = [
+  { key: "note2000", value: 2000, color: "#34d399" },
+  { key: "note500", value: 500, color: "#38bdf8" },
+  { key: "note200", value: 200, color: "#c084fc" },
+  { key: "note100", value: 100, color: "#fbbf24" },
+  { key: "note50", value: 50, color: "#f43f5e" },
+  { key: "note20", value: 20, color: "#2dd4bf" },
+  { key: "note10", value: 10, color: "#a78bfa" },
+  { key: "coins", value: 1, color: "#fb923c" },
+];
+
+// ===================== MAIN COMPONENT =====================
+
+const DailyCashSummaryForm: React.FC<{ refresh?: () => void }> = () => {
   const [formData, setFormData] = useState<CashForm>({
+    note2000: 0,
     note500: 0,
     note200: 0,
     note100: 0,
@@ -155,12 +194,11 @@ const DailyCashSummaryForm: React.FC<{ refresh: () => void }> = () => {
   });
 
   const [loading, setLoading] = useState(false);
-
-   const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     if (name !== "date") {
       const numValue = value === "" ? 0 : Number(value);
       setFormData({
@@ -177,6 +215,7 @@ const DailyCashSummaryForm: React.FC<{ refresh: () => void }> = () => {
 
   const handleClear = () => {
     setFormData({
+      note2000: 0,
       note500: 0,
       note200: 0,
       note100: 0,
@@ -187,35 +226,26 @@ const DailyCashSummaryForm: React.FC<{ refresh: () => void }> = () => {
       online: 0,
       date: getTodayDate(),
     });
-    toast.success("Form cleared successfully", {
+    toast.success("Counter reset successfully", {
       duration: 2000,
       position: "top-right",
     });
   };
 
-  const calculateTotal = () => {
-    return (
-      formData.note500 * 500 +
-      formData.note200 * 200 +
-      formData.note100 * 100 +
-      formData.note50 * 50 +
-      formData.note20 * 20 +
-      formData.note10 * 10 +
-      formData.coins +
-      formData.online
-    );
+  const calculateCashTotal = () => {
+    return denominations.reduce((sum, d) => {
+      return sum + (formData[d.key as keyof CashForm] as number) * d.value;
+    }, 0);
   };
 
-  const calculateCashTotal = () => {
-    return (
-      formData.note500 * 500 +
-      formData.note200 * 200 +
-      formData.note100 * 100 +
-      formData.note50 * 50 +
-      formData.note20 * 20 +
-      formData.note10 * 10 +
-      formData.coins
-    );
+  const calculateTotal = () => {
+    return calculateCashTotal() + formData.online;
+  };
+
+  const calculateNoteCount = () => {
+    return denominations.reduce((sum, d) => {
+      return sum + (formData[d.key as keyof CashForm] as number);
+    }, 0);
   };
 
   const validateForm = (): boolean => {
@@ -271,34 +301,43 @@ const DailyCashSummaryForm: React.FC<{ refresh: () => void }> = () => {
           duration: 3000,
           position: "top-right",
         });
-        
-         navigate('/dailycash/get');
-        
-      } else if (createRes.data.success === false && createRes.data.message === 'Unauthorized') {
+        navigate("/dailycash/get");
+      } else if (
+        createRes.data.success === false &&
+        createRes.data.message === "Unauthorized"
+      ) {
         toast.error("Session expired! Please login again", {
           duration: 4000,
           position: "top-right",
         });
       } else {
-        toast.error(createRes?.data?.message || createRes?.data?.errors || 'Failed to create entry', {
-          duration: 4000,
-          position: "top-right",
-        });
+        toast.error(
+          createRes?.data?.message ||
+            createRes?.data?.errors ||
+            "Failed to create entry",
+          {
+            duration: 4000,
+            position: "top-right",
+          }
+        );
       }
-
     } catch (error: any) {
       console.error(error);
-      
+
       if (!error.response) {
         toast.error("Network error! Please check your connection", {
           duration: 4000,
           position: "top-right",
         });
       } else {
-        toast.error(error.response?.data?.message || "Failed to create entry. Please try again.", {
-          duration: 4000,
-          position: "top-right",
-        });
+        toast.error(
+          error.response?.data?.message ||
+            "Failed to create entry. Please try again.",
+          {
+            duration: 4000,
+            position: "top-right",
+          }
+        );
       }
     } finally {
       setLoading(false);
@@ -306,254 +345,475 @@ const DailyCashSummaryForm: React.FC<{ refresh: () => void }> = () => {
   };
 
   return (
-    <Box sx={{ 
-      display: "flex", 
-      justifyContent: "center", 
-      alignItems: "flex-start", // Changed from center to flex-start to reduce top margin
-      minHeight: "100vh",
-      p: 1.5, // Reduced padding
-      pt: 2, // Small top padding
-      overflow: "hidden",
-      backgroundColor: "#f5f5f5",
-    }}>
-      <Zoom in={true} timeout={500}>
-        <FormCard>
-          <FormHeader
-            title="Daily Cash Entry"
-            subheader="Record your daily cash collection"
-            avatar={
-              <AccountBalanceIcon sx={{ fontSize: 28, opacity: 0.9 }} />
-            }
-          />
-
-          <CardContent sx={{ 
-            p: 2.5, // Reduced padding
-            maxHeight: "calc(100vh - 150px)",
-            overflow: "auto",
-            "&::-webkit-scrollbar": {
-              width: "5px",
-            },
-            "&::-webkit-scrollbar-track": {
-              background: "#f1f1f1",
-              borderRadius: "10px",
-            },
-            "&::-webkit-scrollbar-thumb": {
-              background: "#888",
-              borderRadius: "10px",
-            },
-          }}>
-            {/* Date Field - Compact */}
-            <Grid container spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
-              
-                  <Grid size={{ xs: 12,sm:4, md: 3 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "#090d16",
+        px: { xs: 1.5, sm: 2, md: 3 },
+        py: { xs: 1.5, md: 2 },
+        color: "#ffffff",
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: 1400, mx: "auto" }}>
+        {/* ================= HEADER BANNER ================= */}
+        <DarkBanner>
+          <Box
+            display="flex"
+            flexDirection={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", md: "center" }}
+            gap={2}
+          >
+            <Box>
+              <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                <FiberManualRecord sx={{ fontSize: 10, color: "#10b981" }} />
                 <Typography
-                  variant="subtitle2"
+                  variant="caption"
+                  fontWeight="bold"
+                  sx={{ color: "#10b981", letterSpacing: 0.5, fontSize: "0.7rem" }}
+                >
+                  Cash Management
+                </Typography>
+              </Box>
+
+              <Typography
+                variant="h5"
+                fontWeight="800"
+                sx={{
+                  fontSize: { xs: "1.1rem", sm: "1.4rem", md: "1.6rem" },
+                  letterSpacing: 0.5,
+                  color: "#ffffff",
+                }}
+              >
+                5. NOTE SUMMARY ENTRY (CASH DENOMINATIONS)
+              </Typography>
+            </Box>
+
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBack />}
+                onClick={() => navigate("/dashboard")}
+                size="small"
+                sx={{
+                  color: "#e5e7eb",
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2,
+                  py: 0.8,
+                  fontSize: "0.8rem",
+                  "&:hover": {
+                    borderColor: "#38bdf8",
+                    color: "#38bdf8",
+                    bgcolor: "rgba(56, 189, 248, 0.08)",
+                  },
+                }}
+              >
+                Dashboard
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={handleClear}
+                size="small"
+                sx={{
+                  color: "#e5e7eb",
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2,
+                  py: 0.8,
+                  fontSize: "0.8rem",
+                  "&:hover": {
+                    borderColor: "#c084fc",
+                    color: "#c084fc",
+                    bgcolor: "rgba(192, 132, 252, 0.08)",
+                  },
+                }}
+              >
+                Reset Counter
+              </Button>
+            </Box>
+          </Box>
+        </DarkBanner>
+
+        {/* ================= MAIN FORM CARD ================= */}
+        <FormCard>
+          <Box sx={{ p: { xs: 2, sm: 2.5 } }}>
+            {/* ================= PHYSICAL CASH HEADER ================= */}
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              flexWrap="wrap"
+              gap={1}
+              mb={2}
+            >
+              <Box display="flex" alignItems="center" gap={1}>
+                <Box
                   sx={{
-                    color: "#2c3e50",
-                    fontWeight: 600,
+                    width: 30,
+                    height: 30,
+                    borderRadius: "8px",
+                    bgcolor: "#2e1065",
+                    color: "#c084fc",
                     display: "flex",
                     alignItems: "center",
-                    gap: 0.5,
+                    justifyContent: "center",
                     fontSize: "0.9rem",
                   }}
                 >
-                  <CalendarIcon sx={{ color: "#667eea", fontSize: 18 }} />
-                  Select Date
+                  💰
+                </Box>
+                <Typography
+                  sx={{
+                    color: "#c084fc",
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  PHYSICAL CASH COUNT BREAKDOWN
                 </Typography>
-              </Grid>
-             
-                   <Grid size={{ xs: 12,sm:8, md: 9 }}>
-                <StyledTextField
-                  fullWidth
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleChange}
+              </Box>
+
+              <Typography
+                sx={{ color: "#9ca3af", fontSize: "0.75rem", fontWeight: 600 }}
+              >
+                Enter count of notes/coins
+              </Typography>
+            </Box>
+
+            {/* ================= DATE FIELD ================= */}
+            <Box sx={{ mb: 2 }}>
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={1.5}
+                flexWrap="wrap"
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    bgcolor: "#111827",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "10px",
+                    px: 2,
+                    py: 0.8,
+                  }}
+                >
+                  <CalendarIcon sx={{ color: "#38bdf8", fontSize: 18 }} />
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontWeight: 600,
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Date:
+                  </Typography>
+                  <input
+                    type="date"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleChange}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#ffffff",
+                      fontSize: "0.85rem",
+                      fontWeight: 700,
+                      outline: "none",
+                      cursor: "pointer",
+                      colorScheme: "dark",
+                    }}
+                  />
+                </Box>
+
+                <Chip
+                  label={`Total Notes: ${calculateNoteCount()}`}
                   size="small"
+                  sx={{
+                    bgcolor: "rgba(56, 189, 248, 0.1)",
+                    color: "#38bdf8",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    height: "28px",
+                  }}
                 />
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
 
-            <Divider sx={{ my: 1.5 }} />
-
-            {/* Notes & Coins Section - Full Width */}
-            <Typography
-              variant="subtitle1"
-              sx={{
-                mb: 1,
-                color: "#2c3e50",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                fontSize: "1rem",
-              }}
-            >
-              <SavingsIcon sx={{ color: "#667eea", fontSize: 20 }} />
-              Notes & Coins
-            </Typography>
-
+            {/* ================= DENOMINATION GRID (2 COLUMNS) ================= */}
             <Grid container spacing={1.5} sx={{ mb: 2 }}>
-              {Object.keys(formData).map((key) => {
-                if (key === "online" || key === "date") return null;
-                
-                const labels: { [key: string]: string } = {
-                  note500: "₹500",
-                  note200: "₹200",
-                  note100: "₹100",
-                  note50: "₹50",
-                  note20: "₹20",
-                  note10: "₹10",
-                  coins: "Coins (₹)",
-                };
+              {denominations.map((denom) => {
+                const count = formData[denom.key as keyof CashForm] as number;
+                const subtotal = count * denom.value;
+                const isActive = count > 0;
 
-                const icons: { [key: string]: any } = {
-                  note500: "💵",
-                  note200: "💵",
-                  note100: "💵",
-                  note50: "💵",
-                  note20: "💵",
-                  note10: "💵",
-                  coins: "🪙",
-                };
-
-                // Make coins field full width on mobile, 3 columns on desktop
-              const gridSize =
-  key === "coins"
-    ? { size: { xs: 12, sm: 4, md: 3 } }
-    : { size: { xs: 6, sm: 4, md: 3 } };
+                const label =
+                  denom.key === "coins" ? "Coins x" : `₹${denom.value} x`;
 
                 return (
-                  <Grid {...gridSize} key={key}>
-                    <StyledTextField
-                      fullWidth
-                      label={labels[key]}
-                      name={key}
-                      type="number"
-                      value={formData[key as keyof CashForm]}
-                      onChange={handleChange}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Typography sx={{ fontSize: "0.9rem" }}>
-                              {icons[key]}
-                            </Typography>
-                          </InputAdornment>
-                        ),
-                        inputProps: { min: 0, step: 1 },
-                      }}
-                      size="small"
-                    />
+                  <Grid size={{ xs: 12, sm: 6 }} key={denom.key}>
+                    <RowCard isactive={isActive}>
+                      <DenomLabel sx={{ color: denom.color }}>
+                        {label}
+                      </DenomLabel>
+
+                      <StyledTextField
+                        name={denom.key}
+                        type="number"
+                        value={count}
+                        onChange={handleChange}
+                        inputProps={{ min: 0, step: 1 }}
+                      />
+
+                      <Box
+                        sx={{
+                          flex: 1,
+                          textAlign: "right",
+                          minWidth: "100px",
+                        }}
+                      >
+                        <Typography
+                          sx={{
+                            color: isActive ? denom.color : "#6b7280",
+                            fontWeight: 800,
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          ₹ {subtotal.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </Typography>
+                      </Box>
+                    </RowCard>
                   </Grid>
                 );
               })}
             </Grid>
 
-            {/* Digital Payments Section - Now below coins */}
-            <Typography
-              variant="subtitle1"
-              sx={{
-                mb: 1,
-                color: "#2c3e50",
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                fontSize: "1rem",
-              }}
-            >
-              <PaymentIcon sx={{ color: "#f093fb", fontSize: 20 }} />
-              Digital Payments
-            </Typography>
+            {/* ================= TOTAL NOTES COUNT BAR ================= */}
+            <TotalRow variant="count" sx={{ mb: 2 }}>
+              <Typography
+                sx={{
+                  color: "#c084fc",
+                  fontWeight: 800,
+                  fontSize: "0.85rem",
+                  letterSpacing: 0.5,
+                }}
+              >
+                TOTAL NOTES COUNT:
+              </Typography>
+              <Typography
+                sx={{ color: "#ffffff", fontWeight: 800, fontSize: "1rem" }}
+              >
+                {calculateNoteCount()} Notes/Coins
+              </Typography>
+            </TotalRow>
 
-            <Grid container spacing={1.5} sx={{ mb: 2 }}>
-              
-                 <Grid size={{ xs: 12,sm:6, md: 4 }}>
+            {/* ================= ONLINE PAYMENT SECTION ================= */}
+            <SectionCard sx={{ mb: 2 }}>
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                flexWrap="wrap"
+                gap={2}
+              >
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Box
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "8px",
+                      bgcolor: "#2e1065",
+                      color: "#c084fc",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <MoneyIcon sx={{ fontSize: 18 }} />
+                  </Box>
+                  <Box>
+                    <Typography
+                      sx={{
+                        color: "#ffffff",
+                        fontWeight: 700,
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      Online / Digital Payment
+                    </Typography>
+                    <Typography
+                      sx={{ color: "#9ca3af", fontSize: "0.7rem" }}
+                    >
+                      UPI, Bank Transfer, Card
+                    </Typography>
+                  </Box>
+                </Box>
+
                 <StyledTextField
-                  fullWidth
-                  label="Online Payment"
                   name="online"
                   type="number"
                   value={formData.online}
                   onChange={handleChange}
+                  placeholder="0"
+                  inputProps={{ min: 0, step: 1 }}
+                  sx={{ width: "160px" }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <MoneyIcon sx={{ color: "#f093fb", fontSize: 18 }} />
+                        <Typography
+                          sx={{
+                            color: "#c084fc",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          ₹
+                        </Typography>
                       </InputAdornment>
                     ),
-                    inputProps: { min: 0, step: 1 },
                   }}
-                  size="small"
                 />
-              </Grid>
-            </Grid>
+              </Box>
+            </SectionCard>
 
-            <Divider sx={{ my: 1.5 }} />
+            {/* ================= GRAND TOTAL ================= */}
+            <TotalRow variant="cash" sx={{ mb: 2 }}>
+              <Typography
+                sx={{
+                  color: "#10b981",
+                  fontWeight: 800,
+                  fontSize: { xs: "0.85rem", sm: "0.95rem" },
+                  letterSpacing: 0.5,
+                }}
+              >
+                TOTAL PHYSICAL CASH COUNTED:
+              </Typography>
+              <Typography
+                sx={{
+                  color: "#c084fc",
+                  fontWeight: 900,
+                  fontSize: { xs: "1.3rem", sm: "1.6rem" },
+                  letterSpacing: 0.5,
+                  textShadow: "0 0 20px rgba(192, 132, 252, 0.4)",
+                }}
+              >
+                ₹ {calculateCashTotal().toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Typography>
+            </TotalRow>
 
-            {/* Total Section */}
-            <Grid container spacing={1.5} alignItems="center">
-             
-                 <Grid size={{ xs: 12, md: 7 }}>
-                <TotalCard>
-                  <CardContent sx={{ p: 1.5 }}>
-                    <Typography variant="caption" sx={{ opacity: 0.9, display: "block", fontSize: "0.7rem" }}>
-                      Total Collection for {new Date(formData.date).toLocaleDateString()}
-                    </Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 700, lineHeight: 1.2, fontSize: "1.8rem" }}>
-                      ₹ {calculateTotal().toLocaleString()}
-                    </Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.8, display: "block", fontSize: "0.7rem" }}>
-                      Cash: ₹ {calculateCashTotal().toLocaleString()} | Online: ₹ {formData.online.toLocaleString()}
-                    </Typography>
-                  </CardContent>
-                </TotalCard>
-              </Grid>
+            {/* ================= GRAND TOTAL (Cash + Online) ================= */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 1,
+                bgcolor: "rgba(56, 189, 248, 0.08)",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                borderRadius: "10px",
+                px: 2.5,
+                py: 1.5,
+                mb: 2.5,
+              }}
+            >
+              <Typography
+                sx={{
+                  color: "#38bdf8",
+                  fontWeight: 800,
+                  fontSize: "0.85rem",
+                  letterSpacing: 0.5,
+                }}
+              >
+                GRAND TOTAL (CASH + ONLINE):
+              </Typography>
+              <Typography
+                sx={{
+                  color: "#38bdf8",
+                  fontWeight: 900,
+                  fontSize: { xs: "1.1rem", sm: "1.3rem" },
+                }}
+              >
+                ₹ {calculateTotal().toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Typography>
+            </Box>
 
-            
-                  <Grid size={{ xs: 12, md: 5 }}>
-                <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                  <Tooltip title="Clear all fields" TransitionComponent={Zoom}>
-                    <ActionButton
-                      variant="outlined"
-                      startIcon={<ClearIcon />}
-                      onClick={handleClear}
-                      disabled={loading}
-                      sx={{
-                        borderColor: "#e74c3c",
-                        color: "#e74c3c",
-                        "&:hover": {
-                          borderColor: "#c0392b",
-                          backgroundColor: "rgba(231,76,60,0.05)",
-                        },
-                      }}
-                    >
-                      Clear
-                    </ActionButton>
-                  </Tooltip>
+            {/* ================= ACTIONS ================= */}
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1.5,
+                justifyContent: "flex-end",
+                flexWrap: "wrap",
+              }}
+            >
+              <Tooltip title="Clear all fields" TransitionComponent={Zoom}>
+                <ActionButton
+                  variant="outlined"
+                  startIcon={<ClearIcon />}
+                  onClick={handleClear}
+                  disabled={loading}
+                  sx={{
+                    borderColor: "rgba(244, 63, 94, 0.4)",
+                    color: "#f43f5e",
+                    "&:hover": {
+                      borderColor: "#f43f5e",
+                      bgcolor: "rgba(244, 63, 94, 0.08)",
+                      boxShadow: "0 8px 20px rgba(244, 63, 94, 0.15)",
+                    },
+                  }}
+                >
+                  Clear
+                </ActionButton>
+              </Tooltip>
 
-                  <Tooltip title="Create entry" TransitionComponent={Zoom}>
-                    <ActionButton
-                      variant="contained"
-                      startIcon={<AddCircleIcon />}
-                      onClick={handleSubmit}
-                      disabled={loading}
-                      sx={{
-                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                        "&:hover": {
-                          background: "linear-gradient(135deg, #764ba2 0%, #667eea 100%)",
-                        },
-                      }}
-                    >
-                      {loading ? "Creating..." : "Create"}
-                    </ActionButton>
-                  </Tooltip>
-                </Box>
-              </Grid>
-            </Grid>
-          </CardContent>
+              <Tooltip title="Save entry" TransitionComponent={Zoom}>
+                <ActionButton
+                  variant="contained"
+                  startIcon={<AddCircleIcon />}
+                  onClick={handleSubmit}
+                  disabled={loading}
+                  sx={{
+                    bgcolor: "#10b981",
+                    color: "#ffffff",
+                    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+                    "&:hover": {
+                      bgcolor: "#059669",
+                      boxShadow: "0 8px 20px rgba(16, 185, 129, 0.4)",
+                    },
+                    "&.Mui-disabled": {
+                      bgcolor: "rgba(16, 185, 129, 0.3)",
+                      color: "rgba(255, 255, 255, 0.5)",
+                    },
+                  }}
+                >
+                  {loading ? "Saving..." : "Save Entry"}
+                </ActionButton>
+              </Tooltip>
+            </Box>
+          </Box>
         </FormCard>
-      </Zoom>
+      </Box>
     </Box>
   );
 };

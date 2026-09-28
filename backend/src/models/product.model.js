@@ -22,11 +22,6 @@ const productSchema = new mongoose.Schema(
             required: [true, 'Unit is required'],
             trim: true,
         },
-        categoryId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Category',
-            required: [true, 'Category is required'],
-        },
     },
     {
         timestamps: true,

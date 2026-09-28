@@ -22,7 +22,6 @@ const searchCustomers = async (req, res) => {
             filter.$or = [
                 { companyName: { $regex: searchRegex } },
                 { displayName: { $regex: searchRegex } },
-                { email: { $regex: searchRegex } },
                 { phone: { $regex: searchRegex } },
                 { 'billingAddress.city': { $regex: searchRegex } },
                 { 'billingAddress.state': { $regex: searchRegex } }
@@ -63,11 +62,8 @@ const createCustomer = async (req, res) => {
 
         let customerData =  {
             companyName:req.body.name,
-            companyGST:req.body.gst,
             displayName:req.body?.displayName,
-            email:req.body.email,
             phone:req.body.mobile,
-            alternatePhone:req.body.anotherNumber,
             billingAddress:req.body.address,
             status:req.body.status,
             notes:req.body?.notes,
@@ -165,11 +161,7 @@ const getAllCustomers = async (req, res) => {
             filter.$or = [
                 { displayName: { $regex: search, $options: 'i' } },
                 { companyName: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } },
-                { alternatePhone: { $regex: search, $options: 'i' } },
-                { gstNumber: { $regex: search, $options: 'i' } },
-                { panNumber: { $regex: search, $options: 'i' } }
+                { phone: { $regex: search, $options: 'i' } }, 
             ];
         }
         
@@ -281,10 +273,7 @@ const updateCustomer = async (req, res) => {
             req.params.id,
             {
                 companyName:req.body.name,
-                companyGST:req.body.gst,
                 phone:req.body.mobile,
-                alternatePhone:req.body.anotherNumber,
-                email:req.body.email,
                 billingAddress:req.body.address,
                 status:req.body.status,
             },

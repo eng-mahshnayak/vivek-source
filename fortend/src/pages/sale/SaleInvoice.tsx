@@ -2,11 +2,37 @@ import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import {
+  Box,
+  Button,
+  Typography,
+  Grid,
+  TextField,
 
-interface Category {
-  _id: string;
-  categoryName: string;
-}
+  Chip,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  InputAdornment,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import {
+  ArrowBack,
+  Search,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Save as SaveIcon,
+  FiberManualRecord,
+  Receipt,
+  ShoppingCart,
+} from "@mui/icons-material";
+
+// ===================== TYPES =====================
 
 interface Product {
   _id: string;
@@ -14,13 +40,14 @@ interface Product {
   mrp: number;
   rate: number;
   unit: string;
-  categoryId: string | { _id: string; categoryName: string };
 }
 
 interface Customer {
   _id: string;
-  name: string;
-  mobile: string;
+  name?: string;
+  companyName?: string;
+  mobile?: string;
+  phone?: string;
 }
 
 interface SaleRow {
@@ -41,68 +68,188 @@ const getAuthHeaders = () => ({
   },
 });
 
+// ===================== STYLED COMPONENTS =====================
+
+const DarkBanner = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "20px 24px",
+  marginBottom: "16px",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+}));
+
+const FormCard = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "20px",
+  marginBottom: "16px",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+}));
+
+const StyledTextField = styled(TextField)(() => ({
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "10px",
+    backgroundColor: "#090d16",
+    color: "#ffffff",
+    height: "42px",
+    "& fieldset": {
+      borderColor: "rgba(255, 255, 255, 0.1)",
+    },
+    "&:hover fieldset": {
+      borderColor: "rgba(56, 189, 248, 0.4)",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "#38bdf8",
+      borderWidth: "1.5px",
+    },
+    "&.Mui-disabled": {
+      backgroundColor: "rgba(255, 255, 255, 0.02)",
+    },
+  },
+  "& .MuiOutlinedInput-input": {
+    color: "#ffffff",
+    fontSize: "0.85rem",
+    padding: "10px 12px",
+    "&::placeholder": { color: "#6b7280", opacity: 1 },
+    "&::-webkit-calendar-picker-indicator": {
+      filter: "invert(1)",
+      cursor: "pointer",
+    },
+  },
+  "& .MuiInputBase-input.Mui-disabled": {
+    WebkitTextFillColor: "#6b7280",
+  },
+}));
+
+
+
+const FieldLabel = styled(Typography)(() => ({
+  color: "#9ca3af",
+  fontWeight: 700,
+  fontSize: "0.7rem",
+  letterSpacing: 1,
+  textTransform: "uppercase",
+  marginBottom: "8px",
+}));
+
+const TableContainerDark = styled(TableContainer)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+  overflow: "hidden",
+}));
+
+const StyledTableHead = styled(TableHead)(() => ({
+  "& .MuiTableCell-head": {
+    backgroundColor: "#111827",
+    color: "#9ca3af",
+    fontWeight: 700,
+    fontSize: "0.7rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.8px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    padding: "16px 12px",
+    whiteSpace: "nowrap",
+  },
+}));
+
+const StyledTableRow = styled(TableRow)(() => ({
+  transition: "all 0.2s ease",
+  "&:hover": { backgroundColor: "rgba(56, 189, 248, 0.05)" },
+  "& .MuiTableCell-body": {
+    borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+    color: "#e5e7eb",
+    fontSize: "0.85rem",
+    padding: "12px",
+  },
+}));
+
+const SmallInput = styled("input")(() => ({
+  width: "80px",
+  padding: "8px 10px",
+  borderRadius: "8px",
+  backgroundColor: "#090d16",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  color: "#ffffff",
+  fontSize: "0.85rem",
+  fontWeight: 700,
+  textAlign: "center",
+  outline: "none",
+  transition: "all 0.2s ease",
+  "&:focus": {
+    borderColor: "#38bdf8",
+    boxShadow: "0 0 0 3px rgba(56, 189, 248, 0.1)",
+  },
+  "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
+    WebkitAppearance: "none",
+    margin: 0,
+  },
+  "&[type=number]": {
+    MozAppearance: "textfield",
+  },
+}));
+
+const TotalCard = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(52, 211, 153, 0.3)",
+  padding: "20px 28px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginTop: "16px",
+  boxShadow: "0 8px 20px rgba(52, 211, 153, 0.1)",
+}));
+
+// ===================== MAIN COMPONENT =====================
+
 const SaleInvoice: React.FC = () => {
   const navigate = useNavigate();
 
-  // Master data
-  const [categories, setCategories] = useState<Category[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-
-  // Selected
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+ 
   const [saleDate, setSaleDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
 
-  // Product search
+  console.log(customers);
+  
+
   const [productSearch, setProductSearch] = useState<string>("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Current row being added
   const [currentQty, setCurrentQty] = useState<number>(1);
   const [currentRate, setCurrentRate] = useState<number>(0);
 
-  // Sale rows
   const [rows, setRows] = useState<SaleRow[]>([]);
-
-  // Submit
   const [saving, setSaving] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // ============== Fetch masters ==============
+  // Fetch customers
   useEffect(() => {
     const fetchMasters = async () => {
       try {
-        const [catRes, cusRes] = await Promise.all([
-          axios.get(`${API_URL}/category`, {
-            params: { page: 1, limit: 1000 },
-            ...getAuthHeaders(),
-          }),
-          axios.get(`${API_URL}/customer`, {
-            params: { page: 1, limit: 1000 },
-            ...getAuthHeaders(),
-          }),
-        ]);
-
-        console.log(cusRes.data.data,'==============cusRes.data.data================');
-        console.log(catRes.data.data,'==============catRes.data.data================');
-        
-
-        if (catRes.data?.success) setCategories(catRes.data.data || []);
+        const cusRes = await axios.get(`${API_URL}/customer`, {
+          params: { page: 1, limit: 1000 },
+          ...getAuthHeaders(),
+        });
         if (cusRes.data?.success) setCustomers(cusRes.data.data || []);
       } catch (err) {
         console.error(err);
-        toast.error("Failed to load categories/customers");
+        toast.error("Failed to load customers");
       }
     };
     fetchMasters();
+    setSaleDate(new Date().toISOString().split("T")[0])
   }, []);
 
-  // ============== Close search on outside click ==============
+  // Outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -113,9 +260,9 @@ const SaleInvoice: React.FC = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ============== Search products ==============
+  // Search products
   useEffect(() => {
-    if (!productSearch.trim() || productSearch.length < 1) {
+    if (!productSearch.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
@@ -123,18 +270,10 @@ const SaleInvoice: React.FC = () => {
 
     const timer = setTimeout(async () => {
       try {
-        const params: any = {
-          search: productSearch,
-          page: 1,
-          limit: 20,
-        };
-        if (selectedCategory) params.categoryId = selectedCategory;
-
         const res = await axios.get(`${API_URL}/product`, {
-          params,
+          params: { search: productSearch, page: 1, limit: 20 },
           ...getAuthHeaders(),
         });
-
         if (res.data?.success) {
           setSearchResults(res.data.data || []);
           setShowSearchResults(true);
@@ -145,29 +284,8 @@ const SaleInvoice: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [productSearch, selectedCategory]);
+  }, [productSearch]);
 
-  // ============== Fetch products when category changes ==============
-  useEffect(() => {
-    if (!selectedCategory) return;
-    const fetchProducts = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/product`, {
-          params: { categoryId: selectedCategory, page: 1, limit: 1000 },
-          ...getAuthHeaders(),
-        });
-        if (res.data?.success) {
-          setSearchResults(res.data.data || []);
-          setShowSearchResults(true);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchProducts();
-  }, [selectedCategory]);
-
-  // ============== Select product ==============
   const handleSelectProduct = (p: Product) => {
     setSelectedProduct(p);
     setCurrentRate(p.rate);
@@ -176,7 +294,6 @@ const SaleInvoice: React.FC = () => {
     setShowSearchResults(false);
   };
 
-  // ============== Add item to rows ==============
   const handleAddItem = () => {
     if (!selectedProduct) {
       toast.error("Please select an item first");
@@ -206,7 +323,6 @@ const SaleInvoice: React.FC = () => {
       },
     ]);
 
-    // Reset
     setSelectedProduct(null);
     setProductSearch("");
     setCurrentQty(1);
@@ -214,7 +330,6 @@ const SaleInvoice: React.FC = () => {
     setSearchResults([]);
   };
 
-  // ============== Update row qty/rate ==============
   const updateRow = (
     index: number,
     field: "quantity" | "rate",
@@ -228,20 +343,14 @@ const SaleInvoice: React.FC = () => {
     setRows(updated);
   };
 
-  // ============== Remove row ==============
   const removeRow = (index: number) => {
     setRows(rows.filter((_, i) => i !== index));
   };
 
-  // ============== Grand total ==============
   const grandTotal = rows.reduce((sum, r) => sum + r.totalAmount, 0);
 
-  // ============== Save ==============
   const handleSave = async () => {
-    if (!selectedCustomer) {
-      toast.error("Please select a customer");
-      return;
-    }
+   
     if (rows.length === 0) {
       toast.error("Please add at least one item");
       return;
@@ -251,7 +360,7 @@ const SaleInvoice: React.FC = () => {
       setSaving(true);
 
       const payload = {
-        customerId: selectedCustomer,
+        
         items: rows.map((r) => ({
           productId: r.productId,
           itemName: r.itemName,
@@ -262,15 +371,11 @@ const SaleInvoice: React.FC = () => {
         date: saleDate,
       };
 
-      const res = await axios.post(`${API_URL}/sale`, payload, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("erptoken") || ""}`,
-        },
-      });
+      const res = await axios.post(`${API_URL}/sale`, payload, getAuthHeaders());
 
       if (res.data.success === true) {
-        toast.success("Sale invoice created successfully! 🎉");
-        setTimeout(() => navigate("/sale/invoice-list"), 1200);
+        toast.success("created successfully! 🎉");
+        setTimeout(() => navigate("/load-items"), 1200);
       } else if (res.data.message === "Unauthorized") {
         toast.error("Session expired! Please login again");
         localStorage.removeItem("erptoken");
@@ -302,342 +407,440 @@ const SaleInvoice: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 to-blue-500 bg-clip-text text-transparent mb-2">
-          New Sale Invoice
-        </h1>
-        <p className="text-sm md:text-base text-gray-600">
-          Create a new sale by selecting customer and items
-        </p>
-      </div>
-
-      {/* ============== Top Info: Customer + Date ============== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Customer */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Customer <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={selectedCustomer}
-              onChange={(e) => setSelectedCustomer(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm bg-white"
-            >
-              <option value="">-- Select Customer --</option>
-              {customers.map((c:any) => (
-                <option key={c._id} value={c._id}>
-                  {c.companyName} {c.phone ? `(${c.phone})` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sale Date
-            </label>
-            <input
-              type="date"
-              value={saleDate}
-              onChange={(e) => setSaleDate(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ============== Add Item Section ============== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <span>🔍</span> Add Item
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          {/* Category */}
-          <div className="md:col-span-3">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Category
-            </label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value);
-                setSelectedProduct(null);
-                setProductSearch("");
-              }}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm bg-white"
-            >
-              <option value="">All Categories</option>
-              {categories.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.categoryName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Item Search */}
-          <div className="md:col-span-4 relative" ref={searchRef}>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Search Item
-            </label>
-            <input
-              type="text"
-              value={productSearch}
-              onChange={(e) => {
-                setProductSearch(e.target.value);
-                if (selectedProduct) setSelectedProduct(null);
-              }}
-              onFocus={() => {
-                if (searchResults.length > 0) setShowSearchResults(true);
-              }}
-              placeholder="Type item name..."
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
-            />
-
-            {/* Dropdown */}
-            {showSearchResults && searchResults.length > 0 && (
-              <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
-                {searchResults.map((p) => (
-                  <button
-                    key={p._id}
-                    type="button"
-                    onClick={() => handleSelectProduct(p)}
-                    className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-sm text-gray-800">
-                        {p.itemName}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        MRP: ₹{p.mrp} / {p.unit}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      Rate: ₹{p.rate}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-            {showSearchResults &&
-              productSearch.trim() &&
-              searchResults.length === 0 && (
-                <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-sm text-gray-500">
-                  No items found
-                </div>
-              )}
-          </div>
-
-          {/* Item Name (readonly) */}
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Item Name
-            </label>
-            <input
-              type="text"
-              value={selectedProduct?.itemName || ""}
-              readOnly
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700"
-            />
-          </div>
-
-          {/* MRP (readonly) */}
-          <div className="md:col-span-1">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              MRP
-            </label>
-            <input
-              type="text"
-              value={selectedProduct?.mrp ?? ""}
-              readOnly
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700"
-            />
-          </div>
-
-          {/* Rate */}
-          <div className="md:col-span-1">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Rate
-            </label>
-            <input
-              type="number"
-              value={currentRate || ""}
-              onChange={(e) => setCurrentRate(Number(e.target.value))}
-              min={0}
-              disabled={!selectedProduct}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm disabled:bg-gray-100"
-            />
-          </div>
-
-          {/* Quantity */}
-          <div className="md:col-span-1">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Qty
-            </label>
-            <input
-              type="number"
-              value={currentQty || ""}
-              onChange={(e) => setCurrentQty(Number(e.target.value))}
-              min={1}
-              disabled={!selectedProduct}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm disabled:bg-gray-100"
-            />
-          </div>
-        </div>
-
-        {/* Add Item button */}
-        <div className="mt-3 flex justify-end">
-          <button
-            onClick={handleAddItem}
-            disabled={!selectedProduct}
-            className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all hover:-translate-y-0.5 shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "#090d16",
+        px: { xs: 1.5, sm: 2, md: 3 },
+        py: { xs: 1.5, md: 2.5 },
+        color: "#ffffff",
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: 1400, mx: "auto" }}>
+        {/* ================= HEADER ================= */}
+        <DarkBanner>
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            flexWrap="wrap"
+            gap={2}
           >
-            <span>➕</span> Add Item
-          </button>
-        </div>
-      </div>
+            <Box display="flex" alignItems="center" gap={2}>
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBack />}
+                onClick={() => navigate(-1)}
+                sx={{
+                  color: "#e5e7eb",
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2,
+                  py: 0.9,
+                  fontSize: "0.8rem",
+                  "&:hover": {
+                    borderColor: "#38bdf8",
+                    color: "#38bdf8",
+                    bgcolor: "rgba(56, 189, 248, 0.08)",
+                  },
+                }}
+              >
+                Back
+              </Button>
 
-      {/* ============== Items Table ============== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-5">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-700 text-white">
-              <tr>
-                <th className="px-3 py-3 text-xs font-bold text-left">#</th>
-                <th className="px-3 py-3 text-xs font-bold text-left">
-                  Item Name
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-center">MRP</th>
-                <th className="px-3 py-3 text-xs font-bold text-center">
-                  Rate
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-center">
-                  Quantity
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-center">
-                  Total Amount
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-center">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+              <Box display="flex" alignItems="center" gap={1.5}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "10px",
+                    bgcolor: "#0c2a3a",
+                    color: "#38bdf8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Receipt />
+                </Box>
+                <Box>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <FiberManualRecord sx={{ fontSize: 10, color: "#10b981" }} />
+                    <Typography
+                      sx={{
+                        color: "#10b981",
+                        letterSpacing: 0.5,
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Logistic Management
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="h5"
+                    fontWeight="800"
+                    sx={{
+                      fontSize: { xs: "1rem", sm: "1.3rem", md: "1.5rem" },
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                   LOAD ITEMS
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </DarkBanner>
+
+        {/* ================= CUSTOMER + DATE ================= */}
+        
+        {/* ================= ADD ITEM ================= */}
+        <FormCard>
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <Search sx={{ color: "#38bdf8", fontSize: 20 }} />
+            <Typography
+              sx={{
+                color: "#38bdf8",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              Add Item
+            </Typography>
+          </Box>
+
+          <Grid container spacing={2}>
+            {/* Search */}
+            <Grid size={{ xs: 12, md: 5 }} ref={searchRef} sx={{ position: "relative" }}>
+              <FieldLabel>Search Item</FieldLabel>
+              <StyledTextField
+                fullWidth
+                placeholder="Type item name..."
+                value={productSearch}
+                onChange={(e) => {
+                  setProductSearch(e.target.value);
+                  if (selectedProduct) setSelectedProduct(null);
+                }}
+                onFocus={() => {
+                  if (searchResults.length > 0) setShowSearchResults(true);
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ color: "#6b7280", fontSize: 18 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              {showSearchResults && searchResults.length > 0 && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    mt: 0.5,
+                    bgcolor: "#111827",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "10px",
+                    maxHeight: "280px",
+                    overflowY: "auto",
+                    zIndex: 50,
+                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+                  }}
+                >
+                  {searchResults.map((p) => (
+                    <Box
+                      key={p._id}
+                      onClick={() => handleSelectProduct(p)}
+                      sx={{
+                        px: 2,
+                        py: 1.2,
+                        cursor: "pointer",
+                        borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+                        "&:hover": { bgcolor: "rgba(56, 189, 248, 0.1)" },
+                        "&:last-child": { borderBottom: "none" },
+                      }}
+                    >
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography
+                          sx={{
+                            color: "#ffffff",
+                            fontSize: "0.85rem",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {p.itemName}
+                        </Typography>
+                        <Typography sx={{ color: "#9ca3af", fontSize: "0.75rem" }}>
+                          MRP: ₹{p.mrp}
+                        </Typography>
+                      </Box>
+                      <Typography sx={{ color: "#9ca3af", fontSize: "0.7rem", mt: 0.3 }}>
+                        Rate: ₹{p.rate} / {p.unit}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Grid>
+
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <FieldLabel>Item Name</FieldLabel>
+              <StyledTextField
+                fullWidth
+                value={selectedProduct?.itemName || ""}
+                disabled
+                placeholder="Selected item"
+              />
+            </Grid>
+
+            <Grid size={{ xs: 6, sm: 3, md: 1 }}>
+              <FieldLabel>MRP</FieldLabel>
+              <StyledTextField
+                fullWidth
+                value={selectedProduct?.mrp ?? ""}
+                disabled
+                placeholder="-"
+              />
+            </Grid>
+
+            <Grid size={{ xs: 6, sm: 3, md: 1 }}>
+              <FieldLabel>Rate</FieldLabel>
+              <StyledTextField
+                fullWidth
+                type="number"
+                value={currentRate || ""}
+                onChange={(e) => setCurrentRate(Number(e.target.value))}
+                disabled={!selectedProduct}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 6, sm: 3, md: 1 }}>
+              <FieldLabel>Qty</FieldLabel>
+              <StyledTextField
+                fullWidth
+                type="number"
+                value={currentQty || ""}
+                onChange={(e) => setCurrentQty(Number(e.target.value))}
+                disabled={!selectedProduct}
+                inputProps={{ min: 1 }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 6, sm: 3, md: 1 }}>
+              <FieldLabel>&nbsp;</FieldLabel>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleAddItem}
+                disabled={!selectedProduct}
+                sx={{
+                  bgcolor: "#38bdf8",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  height: "42px",
+                  minWidth: "auto",
+                  px: 1,
+                  boxShadow: "0 4px 14px rgba(56, 189, 248, 0.3)",
+                  "&:hover": { bgcolor: "#0ea5e9" },
+                  "&.Mui-disabled": {
+                    bgcolor: "rgba(56, 189, 248, 0.3)",
+                    color: "rgba(255, 255, 255, 0.5)",
+                  },
+                }}
+              >
+                <AddIcon />
+              </Button>
+            </Grid>
+          </Grid>
+        </FormCard>
+
+        {/* ================= ITEMS TABLE ================= */}
+        <TableContainerDark>
+          <Table>
+            <StyledTableHead>
+              <TableRow>
+                <TableCell>#</TableCell>
+                <TableCell>Item Name</TableCell>
+                <TableCell align="center">MRP</TableCell>
+                <TableCell align="center">Rate</TableCell>
+                <TableCell align="center">Quantity</TableCell>
+                <TableCell align="center">Total Amount</TableCell>
+                <TableCell align="center">Action</TableCell>
+              </TableRow>
+            </StyledTableHead>
+            <TableBody>
               {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-3 py-12 text-center">
-                    <p className="text-lg text-gray-500 mb-2">
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                    <ShoppingCart sx={{ fontSize: 48, color: "#374151", mb: 1 }} />
+                    <Typography sx={{ color: "#9ca3af", mb: 0.5 }}>
                       No items added yet
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      Select a category, search item and click "Add Item"
-                    </p>
-                  </td>
-                </tr>
+                    </Typography>
+                    <Typography sx={{ color: "#6b7280", fontSize: "0.75rem" }}>
+                      Search item above and click + to add
+                    </Typography>
+                  </TableCell>
+                </TableRow>
               ) : (
                 rows.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-blue-50 transition-colors">
-                    <td className="px-3 py-2 text-sm text-gray-600">
-                      {idx + 1}
-                    </td>
-                    <td className="px-3 py-2 text-sm font-medium text-gray-800">
-                      {row.itemName}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="px-2 py-1 border border-gray-300 rounded-full text-xs">
-                        ₹ {row.mrp}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input
+                  <StyledTableRow key={idx}>
+                    <TableCell sx={{ color: "#6b7280" }}>{idx + 1}</TableCell>
+                    <TableCell>
+                      <Typography
+                        sx={{ color: "#ffffff", fontWeight: 700, fontSize: "0.85rem" }}
+                      >
+                        {row.itemName}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={`₹ ${row.mrp}`}
+                        size="small"
+                        sx={{
+                          bgcolor: "rgba(156, 163, 175, 0.1)",
+                          color: "#e5e7eb",
+                          border: "1px solid rgba(156, 163, 175, 0.2)",
+                          fontSize: "0.7rem",
+                          fontWeight: 600,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <SmallInput
                         type="number"
                         value={row.rate}
                         onChange={(e) =>
                           updateRow(idx, "rate", Number(e.target.value))
                         }
                         min={0}
-                        className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                       />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <input
+                    </TableCell>
+                    <TableCell align="center">
+                      <SmallInput
                         type="number"
                         value={row.quantity}
                         onChange={(e) =>
                           updateRow(idx, "quantity", Number(e.target.value))
                         }
                         min={1}
-                        className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                       />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="font-bold text-green-600 text-sm">
-                        ₹ {row.totalAmount.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => removeRow(idx)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        title="Remove"
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography
+                        sx={{ color: "#34d399", fontWeight: 800, fontSize: "0.95rem" }}
                       >
-                        <span className="text-lg">🗑️</span>
-                      </button>
-                    </td>
-                  </tr>
+                        ₹ {row.totalAmount.toLocaleString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        size="small"
+                        onClick={() => removeRow(idx)}
+                        sx={{
+                          color: "#f43f5e",
+                          "&:hover": { bgcolor: "rgba(244, 63, 94, 0.1)" },
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </StyledTableRow>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainerDark>
 
-        {/* Grand Total */}
-        {rows.length > 0 && (
-          <div className="border-t-2 border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50 px-4 py-4">
-            <div className="flex justify-end items-center gap-4">
-              <span className="text-lg font-semibold text-gray-700">
-                Grand Total :
-              </span>
-              <span className="text-2xl font-bold text-green-600">
-                ₹ {grandTotal.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
+        {/* ================= GRAND TOTAL ================= */}
+        <TotalCard>
+          <Typography
+            sx={{
+              color: "#ffffff",
+              fontWeight: 800,
+              fontSize: { xs: "0.95rem", sm: "1.1rem" },
+              letterSpacing: 0.5,
+            }}
+          >
+            GRAND TOTAL:
+          </Typography>
+          <Typography
+            sx={{
+              color: "#34d399",
+              fontWeight: 900,
+              fontSize: { xs: "1.5rem", sm: "1.9rem" },
+              textShadow: "0 0 20px rgba(52, 211, 153, 0.4)",
+            }}
+          >
+            ₹ {grandTotal.toLocaleString()}
+          </Typography>
+        </TotalCard>
 
-      {/* ============== Action Buttons ============== */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-end">
-        <button
-          onClick={handleCancel}
-          disabled={saving}
-          className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm font-medium"
+        {/* ================= ACTIONS ================= */}
+        <Box
+          display="flex"
+          justifyContent="flex-end"
+          gap={1.5}
+          flexWrap="wrap"
+          mt={3}
         >
-          Cancel
-        </button>
+          <Button
+            variant="outlined"
+            onClick={handleCancel}
+            disabled={saving}
+            sx={{
+              color: "#9ca3af",
+              borderColor: "rgba(156, 163, 175, 0.3)",
+              fontWeight: 700,
+              textTransform: "none",
+              borderRadius: "10px",
+              px: 3,
+              py: 1.2,
+              "&:hover": {
+                borderColor: "#9ca3af",
+                bgcolor: "rgba(156, 163, 175, 0.08)",
+              },
+            }}
+          >
+            Cancel
+          </Button>
 
-        <button
-          onClick={handleSave}
-          disabled={saving || rows.length === 0 || !selectedCustomer}
-          className="px-6 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all hover:-translate-y-0.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium"
-        >
-          {saving ? (
-            <>
-              <span className="animate-spin">⏳</span> Saving...
-            </>
-          ) : (
-            <>
-              <span>💾</span> Save Invoice
-            </>
-          )}
-        </button>
-      </div>
-    </div>
+          <Button
+            variant="contained"
+            startIcon={saving ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : <SaveIcon />}
+            onClick={handleSave}
+           
+            sx={{
+              bgcolor: "#10b981",
+              color: "#ffffff",
+              fontWeight: 800,
+              textTransform: "none",
+              borderRadius: "10px",
+              px: 3,
+              py: 1.2,
+              boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+              "&:hover": { bgcolor: "#059669" },
+              "&.Mui-disabled": {
+                bgcolor: "rgba(16, 185, 129, 0.3)",
+                color: "rgba(255, 255, 255, 0.5)",
+              },
+            }}
+          >
+            {saving ? "Saving..." : "Save Invoice"}
+          </Button>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

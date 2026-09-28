@@ -1,60 +1,83 @@
 const Product = require('../models/product.model.js');
-const Category = require('../models/category.model.js');
 
+// =============================
+// SEARCH PRODUCTS (For dropdown/autocomplete)
+// GET /api/product/search?query=term&limit=20
+// =============================
+const searchProducts = async (req, res) => {
+    try {
+        const { query, limit = 20 } = req.query;
+
+        const filter = {};
+
+        // Add regex search if query provided
+        if (query && query.trim() !== '') {
+            const searchRegex = new RegExp(query.trim(), 'i');
+            filter.$or = [
+                { itemName: { $regex: searchRegex } },
+                { unit: { $regex: searchRegex } },
+            ];
+        }
+
+        const products = await Product.find(filter)
+            .limit(parseInt(limit))
+            .sort({ itemName: 1 });
+
+        res.json({
+            success: true,
+            statusCode: 200,
+            count: products.length,
+            data: products,
+        });
+    } catch (error) {
+        console.error('Search Products Error:', error);
+        res.json({
+            success: false,
+            statusCode: 500,
+            message: 'Internal server error',
+        });
+    }
+};
 
 // =============================
 // CREATE PRODUCT
+// POST /api/product
 // =============================
 const createProduct = async (req, res) => {
     try {
-        const { itemName, mrp, rate, unit, categoryId } = req.body;
+        const productData = {
+            itemName: req.body.itemName,
+            mrp: req.body.mrp,
+            rate: req.body.rate,
+            unit: req.body.unit,
+        };
 
-        // Check category exists
-        const category = await Category.findById(categoryId);
-        if (!category) {
-            return res.json({
-                success: false,
-                statusCode: 404,
-                message: 'Category not found',
-            });
-        }
-
-        const product = await Product.create({
-            itemName,
-            mrp,
-            rate,
-            unit,
-            categoryId,
-        });
-
-        // Populate category info
-        const populated = await product.populate('categoryId', 'categoryName');
+        const product = await Product.create(productData);
 
         res.json({
             success: true,
             statusCode: 201,
             message: 'Product created successfully',
-            data: populated,
+            data: product,
         });
-
     } catch (error) {
         console.error('Create Product Error:', error);
 
+        if (error.code === 11000) {
+            return res.json({
+                success: false,
+                statusCode: 400,
+                message: 'Product already exists',
+            });
+        }
+
         if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map(err => err.message);
+            const messages = Object.values(error.errors).map((err) => err.message);
             return res.json({
                 success: false,
                 statusCode: 400,
                 message: 'Validation Error',
                 errors: messages,
-            });
-        }
-
-        if (error.kind === 'ObjectId') {
-            return res.json({
-                success: false,
-                statusCode: 400,
-                message: 'Invalid Category ID',
             });
         }
 
@@ -66,15 +89,9 @@ const createProduct = async (req, res) => {
     }
 };
 
-
-
 // =============================
-// GET ALL PRODUCTS (with search)
-// Supports:
-//   ?page=1&limit=25
-//   ?categoryId=xxx
-//   ?letter=A          → first letter of itemName
-//   ?search=abc        → general search
+// GET ALL PRODUCTS WITH PAGINATION & FILTERS
+// GET /api/product?page=1&limit=10&search=term
 // =============================
 const getAllProducts = async (req, res) => {
     try {
@@ -82,30 +99,18 @@ const getAllProducts = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
 
-        const filter = {};
+        const { search } = req.query;
 
-        // Filter by category
-        if (req.query.categoryId) {
-            filter.categoryId = req.query.categoryId;
-        }
+        let filter = {};
 
-        // Filter by first letter of itemName (case-insensitive)
-        if (req.query.letter) {
-            const letter = req.query.letter.charAt(0);
-            filter.itemName = { $regex: `^${letter}`, $options: 'i' };
-        }
-
-        // General search by itemName
-        if (req.query.search) {
-            filter.itemName = {
-                ...filter.itemName,
-                $regex: req.query.search,
-                $options: 'i',
-            };
+        if (search) {
+            filter.$or = [
+                { itemName: { $regex: search, $options: 'i' } },
+                { unit: { $regex: search, $options: 'i' } },
+            ];
         }
 
         const products = await Product.find(filter)
-            .populate('categoryId', 'categoryName')
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 });
@@ -115,16 +120,15 @@ const getAllProducts = async (req, res) => {
         res.json({
             success: true,
             statusCode: 200,
-            count: total,
+            count: products.length,
             total,
             page,
+            limit,
             pages: Math.ceil(total / limit),
             data: products,
         });
-
     } catch (error) {
         console.error('Get All Products Error:', error);
-
         res.json({
             success: false,
             statusCode: 500,
@@ -133,15 +137,13 @@ const getAllProducts = async (req, res) => {
     }
 };
 
-
-
 // =============================
 // GET PRODUCT BY ID
+// GET /api/product/:id
 // =============================
 const getProductById = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id)
-            .populate('categoryId', 'categoryName');
+        const product = await Product.findById(req.params.id);
 
         if (!product) {
             return res.json({
@@ -156,7 +158,6 @@ const getProductById = async (req, res) => {
             statusCode: 200,
             data: product,
         });
-
     } catch (error) {
         console.error('Get Product By ID Error:', error);
 
@@ -164,7 +165,7 @@ const getProductById = async (req, res) => {
             return res.json({
                 success: false,
                 statusCode: 400,
-                message: 'Invalid ID',
+                message: 'Invalid product ID',
             });
         }
 
@@ -176,10 +177,9 @@ const getProductById = async (req, res) => {
     }
 };
 
-
-
 // =============================
 // UPDATE PRODUCT
+// PUT /api/product/:id
 // =============================
 const updateProduct = async (req, res) => {
     try {
@@ -193,23 +193,16 @@ const updateProduct = async (req, res) => {
             });
         }
 
-        // If categoryId changing, verify new category exists
-        if (req.body.categoryId) {
-            const category = await Category.findById(req.body.categoryId);
-            if (!category) {
-                return res.json({
-                    success: false,
-                    statusCode: 404,
-                    message: 'Category not found',
-                });
-            }
-        }
-
         product = await Product.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            {
+                itemName: req.body.itemName,
+                mrp: req.body.mrp,
+                rate: req.body.rate,
+                unit: req.body.unit,
+            },
             { new: true, runValidators: true }
-        ).populate('categoryId', 'categoryName');
+        );
 
         res.json({
             success: true,
@@ -217,12 +210,19 @@ const updateProduct = async (req, res) => {
             message: 'Product updated successfully',
             data: product,
         });
-
     } catch (error) {
         console.error('Update Product Error:', error);
 
+        if (error.code === 11000) {
+            return res.json({
+                success: false,
+                statusCode: 400,
+                message: 'Product already exists',
+            });
+        }
+
         if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map(err => err.message);
+            const messages = Object.values(error.errors).map((err) => err.message);
             return res.json({
                 success: false,
                 statusCode: 400,
@@ -235,7 +235,7 @@ const updateProduct = async (req, res) => {
             return res.json({
                 success: false,
                 statusCode: 400,
-                message: 'Invalid ID',
+                message: 'Invalid product ID',
             });
         }
 
@@ -247,10 +247,9 @@ const updateProduct = async (req, res) => {
     }
 };
 
-
-
 // =============================
 // DELETE PRODUCT
+// DELETE /api/product/:id
 // =============================
 const deleteProduct = async (req, res) => {
     try {
@@ -271,7 +270,6 @@ const deleteProduct = async (req, res) => {
             statusCode: 200,
             message: 'Product deleted successfully',
         });
-
     } catch (error) {
         console.error('Delete Product Error:', error);
 
@@ -279,7 +277,7 @@ const deleteProduct = async (req, res) => {
             return res.json({
                 success: false,
                 statusCode: 400,
-                message: 'Invalid ID',
+                message: 'Invalid product ID',
             });
         }
 
@@ -291,10 +289,9 @@ const deleteProduct = async (req, res) => {
     }
 };
 
-
-
 // =============================
 // DELETE ALL PRODUCTS
+// DELETE /api/product/delete-all
 // =============================
 const deleteAllProducts = async (req, res) => {
     try {
@@ -303,13 +300,11 @@ const deleteAllProducts = async (req, res) => {
         res.json({
             success: true,
             statusCode: 200,
-            message: 'All products deleted successfully',
+            message: `${result.deletedCount} products deleted successfully`,
             deletedCount: result.deletedCount,
         });
-
     } catch (error) {
         console.error('Delete All Products Error:', error);
-
         res.json({
             success: false,
             statusCode: 500,
@@ -318,9 +313,8 @@ const deleteAllProducts = async (req, res) => {
     }
 };
 
-
-
 module.exports = {
+    searchProducts,
     createProduct,
     getAllProducts,
     getProductById,

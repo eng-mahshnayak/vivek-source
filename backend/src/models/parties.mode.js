@@ -23,30 +23,13 @@ const partySchema = new mongoose.Schema({
         trim: true,
         unique: true
     },
-    companyGST: {
-        type: String,
-        uppercase:true,
-        required: [true, 'companyGST name is required'],
-        trim: true,
-        unique: true
-    },
-    
     displayName: {
         type: String,
         set: toTitleCase,
         trim: true
     },
     
-    // Contact Information
-    email: {
-        type: String,
-        lowercase: true,
-        trim: true,
-        match: [
-            /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-            'Please provide a valid email address'
-        ]
-    },
+    
     
     phone: {
         type: String,
@@ -58,9 +41,7 @@ const partySchema = new mongoose.Schema({
             message: props => `${props.value} is not a valid phone number!`
         }
     },
-    alternatePhone: String,
-
-    // Address Information
+    
     billingAddress:String,
     
     // Status and Classification

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const {
+    searchProducts,
     createProduct,
     getAllProducts,
     getProductById,
@@ -10,28 +11,38 @@ const {
     deleteAllProducts,
 } = require('../controllers/product.controller.js');
 
+// =============================
+// SEARCH PRODUCTS (Advanced search with regex)
+// GET /api/product/search?query=term&limit=20
+// ⚠️ Must come BEFORE /:id route
+// =============================
+router.get('/search', searchProducts);
 
 // =============================
-// PRODUCT ROUTES
+// DELETE ALL PRODUCTS
+// DELETE /api/product/delete-all
+// ⚠️ Must come BEFORE /:id route
 // =============================
+router.delete('/delete-all', deleteAllProducts);
 
-// Create + Get All (with search/filter)
-router
-    .route('/')
+// =============================
+// CREATE + GET ALL
+// POST /api/product  → Create new product
+// GET  /api/product  → Get all products (with pagination)
+// =============================
+router.route('/')
     .post(createProduct)
     .get(getAllProducts);
 
-// Delete All  ⚠️ ye '/:id' se PEHLE hona chahiye
-router
-    .route('/delete-all')
-    .delete(deleteAllProducts);
-
-// Get Single + Update + Delete
-router
-    .route('/:id')
+// =============================
+// GET ONE + UPDATE + DELETE
+// GET    /api/product/:id  → Get single product
+// PUT    /api/product/:id  → Update product
+// DELETE /api/product/:id  → Delete product
+// =============================
+router.route('/:id')
     .get(getProductById)
     .put(updateProduct)
     .delete(deleteProduct);
-
 
 module.exports = router;

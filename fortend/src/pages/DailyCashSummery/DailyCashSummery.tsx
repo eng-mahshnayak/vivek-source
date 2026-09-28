@@ -1,12 +1,157 @@
-
-
-
-
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import {
+  Box,
+  Grid,
+  Card,
+
+  Typography,
+  Chip,
+  Button,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+
+  Select,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  CircularProgress,
+  Alert,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import {
+  Add,
+  Refresh,
+  Delete,
+  Edit,
+
+  FiberManualRecord,
+  Payments,
+  AccountBalanceWallet,
+  TrendingUp,
+  Receipt,
+  ChevronLeft,
+  ChevronRight,
+  FirstPage,
+  LastPage,
+} from "@mui/icons-material";
+
+// ===================== STYLED DARK COMPONENTS =====================
+
+const DarkBanner = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "24px",
+  marginBottom: "20px",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+}));
+
+const MetricCard = styled(Box)<{ accentcolor: string }>(({ accentcolor }) => ({
+  backgroundColor: "#111827",
+  borderRadius: "12px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "16px 20px",
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+  position: "relative",
+  overflow: "hidden",
+  transition: "all 0.3s ease",
+  "&:hover": {
+    transform: "translateY(-4px)",
+    boxShadow: `0 12px 28px ${accentcolor}22`,
+    borderColor: accentcolor,
+  },
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "4px",
+    height: "100%",
+    backgroundColor: accentcolor,
+  },
+}));
+
+const StyledTableContainer = styled(TableContainer)(() => ({
+  backgroundColor: "#111827",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+  overflow: "hidden",
+  "&::-webkit-scrollbar": {
+    height: "8px",
+    width: "8px",
+  },
+  "&::-webkit-scrollbar-track": {
+    background: "#0d1527",
+  },
+  "&::-webkit-scrollbar-thumb": {
+    background: "#374151",
+    borderRadius: "4px",
+  },
+  "&::-webkit-scrollbar-thumb:hover": {
+    background: "#4b5563",
+  },
+}));
+
+const StyledTableHead = styled(TableHead)(() => ({
+  "& .MuiTableCell-head": {
+    backgroundColor: "#0d1527",
+    color: "#9ca3af",
+    fontWeight: 700,
+    fontSize: "0.75rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    whiteSpace: "nowrap",
+    padding: "14px 12px",
+  },
+}));
+
+const StyledTableRow = styled(TableRow)(() => ({
+  transition: "all 0.2s ease",
+  "&:hover": {
+    backgroundColor: "rgba(16, 185, 129, 0.05)",
+  },
+  "& .MuiTableCell-body": {
+    borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+    color: "#e5e7eb",
+    fontSize: "0.85rem",
+    padding: "12px",
+  },
+}));
+
+
+
+const IconBox = styled(Box)<{ bgcolor: string; iconcolor: string }>(
+  ({ bgcolor, iconcolor }) => ({
+    width: "48px",
+    height: "48px",
+    borderRadius: "12px",
+    backgroundColor: bgcolor,
+    color: iconcolor,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  })
+);
+
+// ===================== INTERFACES =====================
 
 interface CashEntry {
   _id: string;
@@ -27,7 +172,8 @@ interface CashEntry {
 }
 
 // API URL from environment
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // Get auth headers
 const getAuthHeaders = () => ({
@@ -36,8 +182,12 @@ const getAuthHeaders = () => ({
   },
 });
 
+// ===================== MAIN COMPONENT =====================
+
 const DailyCashSummary: React.FC = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
 
   const [data, setData] = useState<CashEntry[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -45,14 +195,13 @@ const DailyCashSummary: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Pagination states
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [rowsPerPageOptions] = useState([25, 50, 100, 200]);
   const [totalEntries, setTotalEntries] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  
 
   const [summary, setSummary] = useState({
     totalCash: 0,
@@ -64,7 +213,7 @@ const DailyCashSummary: React.FC = () => {
   const calculateTotals = (entries: CashEntry[]) => {
     const summary = entries.reduce(
       (acc, entry) => {
-        const cashTotal = 
+        const cashTotal =
           (entry.openingCash?.note500 * 500 || 0) +
           (entry.openingCash?.note200 * 200 || 0) +
           (entry.openingCash?.note100 * 100 || 0) +
@@ -72,9 +221,9 @@ const DailyCashSummary: React.FC = () => {
           (entry.openingCash?.note20 * 20 || 0) +
           (entry.openingCash?.note10 * 10 || 0) +
           (entry.openingCash?.coins || 0);
-        
+
         const onlineTotal = entry.openingCash?.online || 0;
-        
+
         return {
           totalCash: acc.totalCash + cashTotal,
           totalOnline: acc.totalOnline + onlineTotal,
@@ -91,36 +240,35 @@ const DailyCashSummary: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const res = await axios.get(`${API_URL}/dailycash`, {
-        params: {
-          page,
-          limit: rowsPerPage,
-        },
+        params: { page, limit: rowsPerPage },
         ...getAuthHeaders(),
       });
-      
+
       if (res.data?.success === true) {
         const entries = res.data.data || [];
         setData(entries);
         setTotalEntries(res.data.total || 0);
         setTotalPages(res.data.pages || 1);
         calculateTotals(entries);
-        toast.success("Successfully");
-      } else if (res.data?.success === false && res.data?.message === 'Unauthorized') {
-        toast.error("login again");
-        navigate('/login');
+      } else if (
+        res.data?.success === false &&
+        res.data?.message === "Unauthorized"
+      ) {
+        toast.error("Login again");
+        navigate("/login");
       } else {
-        toast.error(res?.data?.message || res?.data?.errors || 'Failed');
+        toast.error(res?.data?.message || "Failed to load data");
         setData([]);
       }
     } catch (error: any) {
-      if (error.response?.data?.message === 'Unauthorized') {
-        setError('login again');
-        localStorage.removeItem('erptoken');
-        navigate('/login');
+      if (error.response?.data?.message === "Unauthorized") {
+        setError("Login again");
+        localStorage.removeItem("erptoken");
+        navigate("/login");
       } else {
-        setError(error.response?.data?.message || 'Failed to fetch data');
+        setError(error.response?.data?.message || "Failed to fetch data");
       }
       setData([]);
     } finally {
@@ -135,27 +283,32 @@ const DailyCashSummary: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       setLoading(true);
-      
-      const res = await axios.delete(`${API_URL}/dailycash/${id}`, getAuthHeaders());
-      
+      const res = await axios.delete(
+        `${API_URL}/dailycash/${id}`,
+        getAuthHeaders()
+      );
+
       if (res.data?.success === true) {
+        toast.success("Entry deleted successfully");
         await fetchData();
         setDeleteDialogOpen(false);
-      } else if (res.data?.success === false && res.data?.message === 'Unauthorized') {
-        setError('login again');
-        localStorage.removeItem('erptoken');
-        navigate('/login');
+      } else if (
+        res.data?.success === false &&
+        res.data?.message === "Unauthorized"
+      ) {
+        setError("Login again");
+        localStorage.removeItem("erptoken");
+        navigate("/login");
       } else {
-        setError(res.data?.message || 'Failed to delete entry');
+        setError(res.data?.message || "Failed to delete entry");
       }
     } catch (error: any) {
-      console.error("Error deleting entry:", error);
-      if (error.response?.data?.message === 'Unauthorized') {
-        setError('login again');
-        localStorage.removeItem('erptoken');
-        navigate('/login');
+      if (error.response?.data?.message === "Unauthorized") {
+        setError("Login again");
+        localStorage.removeItem("erptoken");
+        navigate("/login");
       } else {
-        setError(error.response?.data?.message || 'Failed to delete entry');
+        setError(error.response?.data?.message || "Failed to delete entry");
       }
     } finally {
       setLoading(false);
@@ -165,22 +318,22 @@ const DailyCashSummary: React.FC = () => {
   const handleDeleteAll = async () => {
     try {
       setLoading(true);
-      
-      // Delete one by one since no bulk delete endpoint
       for (const entry of data) {
-        await axios.delete(`${API_URL}/dailycash/${entry._id}`, getAuthHeaders());
+        await axios.delete(
+          `${API_URL}/dailycash/${entry._id}`,
+          getAuthHeaders()
+        );
       }
-      
+      toast.success("All entries deleted successfully");
       await fetchData();
       setDeleteAllDialogOpen(false);
     } catch (error: any) {
-      console.error("Error deleting all entries:", error);
-      if (error.response?.data?.message === 'Unauthorized') {
-        setError('login again');
-        localStorage.removeItem('erptoken');
-        navigate('/login');
+      if (error.response?.data?.message === "Unauthorized") {
+        setError("Login again");
+        localStorage.removeItem("erptoken");
+        navigate("/login");
       } else {
-        setError(error.response?.data?.message || 'Failed to delete all entries');
+        setError(error.response?.data?.message || "Failed to delete all entries");
       }
     } finally {
       setLoading(false);
@@ -189,500 +342,895 @@ const DailyCashSummary: React.FC = () => {
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleRowsPerPageChange = (event: any) => {
     setRowsPerPage(Number(event.target.value));
     setPage(1);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
+  // ===================== SUMMARY METRICS =====================
+  const summaryMetrics = [
+    {
+      label: "Total Entries",
+      amount: totalEntries.toString(),
+      color: "#c084fc",
+      icon: <Receipt />,
+      iconBg: "#2e1065",
+    },
+    {
+      label: "Total Cash",
+      amount: `₹ ${summary.totalCash.toLocaleString()}`,
+      color: "#34d399",
+      icon: <Payments />,
+      iconBg: "#132e29",
+    },
+    {
+      label: "Total Online",
+      amount: `₹ ${summary.totalOnline.toLocaleString()}`,
+      color: "#38bdf8",
+      icon: <TrendingUp />,
+      iconBg: "#0c2a3a",
+    },
+    {
+      label: "Grand Total",
+      amount: `₹ ${summary.grandTotal.toLocaleString()}`,
+      color: "#fbbf24",
+      icon: <AccountBalanceWallet />,
+      iconBg: "#332208",
+    },
+  ];
+
+  // ===================== LOADING SKELETON =====================
   if (loading && data.length === 0) {
     return (
-      <div className="p-4 md:p-6 max-w-7xl mx-auto">
-        <div className="h-16 bg-gray-200 rounded-lg animate-pulse mb-4"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded-2xl animate-pulse"></div>
-          ))}
-        </div>
-        <div className="h-96 bg-gray-200 rounded-2xl animate-pulse"></div>
-      </div>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          bgcolor: "#090d16",
+          px: { xs: 1.5, sm: 3, md: 4 },
+          py: { xs: 2, md: 3 },
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 2,
+        }}
+      >
+        <CircularProgress sx={{ color: "#10b981" }} />
+        <Typography sx={{ color: "#9ca3af" }}>Loading entries...</Typography>
+      </Box>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      {/* Header Section */}
-      <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 to-blue-500 bg-clip-text text-transparent mb-2">
-            Daily Cash Summary
-          </h1>
-          <p className="text-sm md:text-base text-gray-600">
-            Track and manage daily cash collections
-          </p>
-          {data.length > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
-              Showing {data.length} of {totalEntries} entries
-            </p>
-          )}
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-2">
-          <button
-            onClick={() => navigate("/dailycash/create")}
-            className="px-4 md:px-6 py-2.5 border-2 border-blue-400 text-blue-500 rounded-xl hover:bg-blue-50 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm font-medium"
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "#090d16",
+        px: { xs: 1.5, sm: 3, md: 4 },
+        py: { xs: 2, md: 3 },
+        color: "#ffffff",
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: 1350, mx: "auto" }}>
+        {/* ================= HEADER BANNER ================= */}
+        <DarkBanner>
+          <Box
+            display="flex"
+            flexDirection={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", md: "center" }}
+            gap={2}
           >
-            <span>➕</span>
-            Create
-          </button>
+            <Box>
+              <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                <FiberManualRecord sx={{ fontSize: 12, color: "#10b981" }} />
+                <Typography
+                  variant="caption"
+                  fontWeight="bold"
+                  sx={{ color: "#10b981", letterSpacing: 0.5 }}
+                >
+                  Cash Management
+                </Typography>
+              </Box>
 
-          <button
-            onClick={fetchData}
-            className="px-4 md:px-6 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm font-medium"
-          >
-            <span>🔄</span>
-            Refresh
-          </button>
-
-          <button
-            onClick={() => setDeleteAllDialogOpen(true)}
-            disabled={data.length === 0}
-            className="px-4 md:px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all hover:-translate-y-0.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2 text-sm font-medium"
-          >
-            <span>🗑️</span>
-            Delete All
-          </button>
-        </div>
-      </div>
-
-      {/* Error Alert */}
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex justify-between items-center">
-          <p className="text-red-700 text-sm">{error}</p>
-          <button 
-            onClick={() => setError(null)} 
-            className="text-red-500 hover:text-red-700"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Summary Cards with Hover Effects */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Total Entries Card */}
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl p-5 text-white shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:from-purple-600 hover:to-purple-700 cursor-pointer group">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl group-hover:scale-110 transition-transform">💰</span>
-            <p className="text-sm opacity-90 group-hover:opacity-100">Total Entries</p>
-          </div>
-          <p className="text-2xl md:text-3xl font-bold group-hover:scale-110 transition-transform inline-block">{totalEntries}</p>
-          <div className="mt-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-            📊 Total number of entries
-          </div>
-        </div>
-
-        {/* Total Cash Card */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-5 text-white shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:from-green-600 hover:to-green-700 cursor-pointer group">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl group-hover:scale-110 transition-transform">💰</span>
-            <p className="text-sm opacity-90 group-hover:opacity-100">Total Cash</p>
-          </div>
-          <p className="text-2xl md:text-3xl font-bold group-hover:scale-110 transition-transform inline-block">₹ {summary.totalCash.toLocaleString()}</p>
-          <div className="mt-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-            💵 Physical cash total
-          </div>
-        </div>
-
-        {/* Total Online Card */}
-        <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-2xl p-5 text-white shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:from-pink-600 hover:to-pink-700 cursor-pointer group">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl group-hover:scale-110 transition-transform">📈</span>
-            <p className="text-sm opacity-90 group-hover:opacity-100">Total Online</p>
-          </div>
-          <p className="text-2xl md:text-3xl font-bold group-hover:scale-110 transition-transform inline-block">₹ {summary.totalOnline.toLocaleString()}</p>
-          <div className="mt-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-            💳 Online payments total
-          </div>
-        </div>
-
-        {/* Grand Total Card */}
-        <div className="bg-gradient-to-r from-orange-400 to-orange-500 rounded-2xl p-5 text-white shadow-xl transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:from-orange-500 hover:to-orange-600 cursor-pointer group">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl group-hover:scale-110 transition-transform">💰</span>
-            <p className="text-sm opacity-90 group-hover:opacity-100">Grand Total</p>
-          </div>
-          <p className="text-2xl md:text-3xl font-bold group-hover:scale-110 transition-transform inline-block">₹ {summary.grandTotal.toLocaleString()}</p>
-          <div className="mt-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-            💰 Cash + Online total
-          </div>
-        </div>
-      </div>
-
-      {/* Rows Per Page Selector */}
-      {data.length > 0 && (
-        <div className="mb-4 flex justify-end">
-          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-gray-200">
-            <span className="text-sm text-gray-600">Show:</span>
-            <select
-              value={rowsPerPage}
-              onChange={handleRowsPerPageChange}
-              className="border-none focus:outline-none text-sm font-medium text-gray-700 bg-transparent"
-            >
-              {rowsPerPageOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            <span className="text-sm text-gray-600">entries</span>
-          </div>
-        </div>
-      )}
-
-      {/* Table Section - Desktop */}
-      <div className="hidden lg:block bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-700">
-              <tr>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">Date</th>
-                   <th className="px-3 py-4 text-center text-sm font-bold text-white">Collect Person</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">₹500</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">₹200</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">₹100</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">₹50</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">₹20</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">₹10</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">Coins</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">Online</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">Total</th>
-                <th className="px-3 py-4 text-center text-sm font-bold text-white">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {data.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="px-3 py-12 text-center">
-                    <p className="text-lg text-gray-500 mb-2">No entries found</p>
-                    <p className="text-sm text-gray-400 mb-4">Click "Create" to add your first entry</p>
-                  </td>
-                </tr>
-              ) : (
-                data.map((row) => (
-                  <tr key={row._id} className="hover:bg-blue-50 transition-all hover:scale-[1.01] hover:shadow-md">
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-gray-300 rounded-full text-xs">
-                        {formatDate(row.date)}
-                      </span>
-                    </td>
-                     <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-blue-300 text-blue-700 rounded-full text-xs">
-                        {"mahesh nayak"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-blue-300 text-blue-700 rounded-full text-xs">
-                        {row.openingCash?.note500 || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-blue-300 text-blue-700 rounded-full text-xs">
-                        {row.openingCash?.note200 || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-blue-300 text-blue-700 rounded-full text-xs">
-                        {row.openingCash?.note100 || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-blue-300 text-blue-700 rounded-full text-xs">
-                        {row.openingCash?.note50 || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-blue-300 text-blue-700 rounded-full text-xs">
-                        {row.openingCash?.note20 || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-blue-300 text-blue-700 rounded-full text-xs">
-                        {row.openingCash?.note10 || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-pink-300 text-pink-700 rounded-full text-xs">
-                        {row.openingCash?.coins || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="px-3 py-1 border border-cyan-300 text-cyan-700 rounded-full text-xs">
-                        ₹ {row.openingCash?.online?.toLocaleString() || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <p className="font-bold text-green-600">₹ {row.totalSales?.toLocaleString() || 0}</p>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <div className="flex justify-center gap-1">
-                        <button
-                          onClick={() => navigate(`/dailycash/edit/${row._id}`)}
-                          disabled={loading}
-                          className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-all hover:-translate-y-0.5"
-                          title="Edit"
-                        >
-                          <span className="text-lg">✏️</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedId(row._id);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={loading}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-all hover:-translate-y-0.5"
-                          title="Delete"
-                        >
-                          <span className="text-lg">🗑️</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile/Tablet Card View */}
-      <div className="lg:hidden space-y-4">
-        {data.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center border border-gray-200">
-            <p className="text-lg text-gray-500 mb-2">No entries found</p>
-            <p className="text-sm text-gray-400 mb-4">Click "Create" to add your first entry</p>
-          </div>
-        ) : (
-          data.map((row) => (
-            <div key={row._id} className="bg-white rounded-2xl border border-gray-200 shadow-md overflow-hidden hover:shadow-lg transition-all">
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <span className="px-3 py-1 border border-gray-300 rounded-full text-xs">
-                      {formatDate(row.date)}
-                    </span>
-                  </div>
-                  <p className="font-bold text-green-600">₹ {row.totalSales?.toLocaleString() || 0}</p>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2 mb-3">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">₹500</p>
-                    <span className="px-2 py-1 border border-blue-300 text-blue-700 rounded-full text-xs inline-block mt-1">
-                      {row.openingCash?.note500 || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">₹200</p>
-                    <span className="px-2 py-1 border border-blue-300 text-blue-700 rounded-full text-xs inline-block mt-1">
-                      {row.openingCash?.note200 || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">₹100</p>
-                    <span className="px-2 py-1 border border-blue-300 text-blue-700 rounded-full text-xs inline-block mt-1">
-                      {row.openingCash?.note100 || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">₹50</p>
-                    <span className="px-2 py-1 border border-blue-300 text-blue-700 rounded-full text-xs inline-block mt-1">
-                      {row.openingCash?.note50 || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">₹20</p>
-                    <span className="px-2 py-1 border border-blue-300 text-blue-700 rounded-full text-xs inline-block mt-1">
-                      {row.openingCash?.note20 || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">₹10</p>
-                    <span className="px-2 py-1 border border-blue-300 text-blue-700 rounded-full text-xs inline-block mt-1">
-                      {row.openingCash?.note10 || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">Coins</p>
-                    <span className="px-2 py-1 border border-pink-300 text-pink-700 rounded-full text-xs inline-block mt-1">
-                      {row.openingCash?.coins || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500">Online</p>
-                    <span className="px-2 py-1 border border-cyan-300 text-cyan-700 rounded-full text-xs inline-block mt-1">
-                      ₹{row.openingCash?.online?.toLocaleString() || 0}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-3 border-t border-gray-200">
-                  <button
-                    onClick={() => navigate(`/dailycash/edit/${row._id}`)}
-                    disabled={loading}
-                    className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span>✏️</span> Edit
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedId(row._id);
-                      setDeleteDialogOpen(true);
-                    }}
-                    disabled={loading}
-                    className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span>🗑️</span> Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Pagination Controls */}
-      {totalEntries > 0 && (
-        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="text-sm text-gray-500">
-            Showing {(page - 1) * rowsPerPage + 1} to {Math.min(page * rowsPerPage, totalEntries)} of {totalEntries} entries
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            <button
-              onClick={() => handlePageChange(1)}
-              disabled={page === 1}
-              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              ⏮️ First
-            </button>
-            <button
-              onClick={() => handlePageChange(page - 1)}
-              disabled={page === 1}
-              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              ◀️ Prev
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = idx + 1;
-                } else if (page <= 3) {
-                  pageNum = idx + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + idx;
-                } else {
-                  pageNum = page - 2 + idx;
-                }
-                
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handlePageChange(pageNum)}
-                    className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                      page === pageNum
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
-                        : 'border border-gray-200 bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-            </div>
-            
-            <button
-              onClick={() => handlePageChange(page + 1)}
-              disabled={page === totalPages}
-              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Next ▶️
-            </button>
-            <button
-              onClick={() => handlePageChange(totalPages)}
-              disabled={page === totalPages}
-              className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Last ⏭️
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteDialogOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-red-600 mb-4">Confirm Delete</h2>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete this entry? This action cannot be undone.</p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteDialogOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
-                disabled={loading}
+              <Typography
+                variant="h4"
+                fontWeight="800"
+                sx={{
+                  fontSize: { xs: "1.4rem", sm: "1.8rem", md: "2.1rem" },
+                  letterSpacing: 0.5,
+                  color: "#ffffff",
+                }}
               >
-                Cancel
-              </button>
-              <button
-                onClick={() => selectedId && handleDelete(selectedId)}
-                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm hover:from-red-600 hover:to-red-700"
-                disabled={loading}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                DAILY CASH SUMMARY
+              </Typography>
 
-      {/* Delete All Confirmation Modal */}
-      {deleteAllDialogOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-red-600 mb-4">Delete All Entries</h2>
-            <p className="text-gray-600 mb-6">Are you sure you want to delete ALL entries? This action cannot be undone and all data will be permanently lost.</p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteAllDialogOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
-                disabled={loading}
+              <Typography variant="body2" sx={{ color: "#9ca3af", mt: 0.5 }}>
+                Track and manage daily cash collections, denominations & online payments.
+              </Typography>
+            </Box>
+
+            <Box
+              display="flex"
+              gap={1.5}
+              flexWrap="wrap"
+              sx={{ width: { xs: "100%", md: "auto" } }}
+            >
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => navigate("/dailycash/create")}
+                sx={{
+                  bgcolor: "#10b981",
+                  color: "#ffffff",
+                  fontWeight: "bold",
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2.5,
+                  py: 1.2,
+                  flex: { xs: 1, md: "none" },
+                  boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+                  "&:hover": { bgcolor: "#059669" },
+                }}
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAll}
-                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm hover:from-red-600 hover:to-red-700"
-                disabled={loading}
+                Create
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={fetchData}
+                sx={{
+                  color: "#e5e7eb",
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  fontWeight: "bold",
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2.5,
+                  py: 1.2,
+                  flex: { xs: 1, md: "none" },
+                  "&:hover": {
+                    borderColor: "#38bdf8",
+                    color: "#38bdf8",
+                    bgcolor: "rgba(56, 189, 248, 0.08)",
+                  },
+                }}
+              >
+                Refresh
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<Delete />}
+                onClick={() => setDeleteAllDialogOpen(true)}
+                disabled={data.length === 0}
+                sx={{
+                  color: "#f43f5e",
+                  borderColor: "rgba(244, 63, 94, 0.3)",
+                  fontWeight: "bold",
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2.5,
+                  py: 1.2,
+                  flex: { xs: 1, md: "none" },
+                  "&:hover": {
+                    borderColor: "#f43f5e",
+                    bgcolor: "rgba(244, 63, 94, 0.08)",
+                  },
+                  "&.Mui-disabled": {
+                    color: "rgba(244, 63, 94, 0.4)",
+                    borderColor: "rgba(244, 63, 94, 0.15)",
+                  },
+                }}
               >
                 Delete All
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+              </Button>
+            </Box>
+          </Box>
+        </DarkBanner>
+
+        {/* ================= ERROR ALERT ================= */}
+        {error && (
+          <Alert
+            severity="error"
+            onClose={() => setError(null)}
+            sx={{
+              mb: 3,
+              bgcolor: "rgba(244, 63, 94, 0.1)",
+              color: "#fca5a5",
+              border: "1px solid rgba(244, 63, 94, 0.3)",
+              borderRadius: "12px",
+              "& .MuiAlert-icon": { color: "#f43f5e" },
+            }}
+          >
+            {error}
+          </Alert>
+        )}
+
+        {/* ================= METRICS SUMMARY BAR ================= */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {summaryMetrics.map((metric, index) => (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
+              <MetricCard accentcolor={metric.color}>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={1}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "#9ca3af", fontSize: "0.75rem", fontWeight: 600 }}
+                  >
+                    {metric.label}
+                  </Typography>
+                  <IconBox
+                    bgcolor={metric.iconBg}
+                    iconcolor={metric.color}
+                    sx={{ width: 36, height: 36, borderRadius: "10px" }}
+                  >
+                    {React.cloneElement(metric.icon, { sx: { fontSize: 20 } })}
+                  </IconBox>
+                </Box>
+                <Typography
+                  variant="h6"
+                  fontWeight="bold"
+                  sx={{
+                    color: metric.color,
+                    fontSize: { xs: "1.2rem", sm: "1.4rem" },
+                  }}
+                >
+                  {metric.amount}
+                </Typography>
+              </MetricCard>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* ================= ROWS PER PAGE + INFO ================= */}
+        {data.length > 0 && (
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            flexWrap="wrap"
+            gap={2}
+            mb={2}
+          >
+            <Typography variant="caption" sx={{ color: "#9ca3af" }}>
+              Showing {data.length} of {totalEntries} entries
+            </Typography>
+
+            <Box
+              display="flex"
+              alignItems="center"
+              gap={1}
+              sx={{
+                bgcolor: "#111827",
+                px: 2,
+                py: 1,
+                borderRadius: "10px",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+              }}
+            >
+              <Typography variant="caption" sx={{ color: "#9ca3af" }}>
+                Show:
+              </Typography>
+              <Select
+                value={rowsPerPage}
+                onChange={handleRowsPerPageChange}
+                size="small"
+                variant="standard"
+                disableUnderline
+                sx={{
+                  color: "#e5e7eb",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  "& .MuiSvgIcon-root": { color: "#9ca3af" },
+                  "& .MuiSelect-select": { py: 0.5 },
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: "#111827",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      "& .MuiMenuItem-root": {
+                        color: "#e5e7eb",
+                        fontSize: "0.85rem",
+                        "&:hover": { bgcolor: "rgba(16, 185, 129, 0.1)" },
+                        "&.Mui-selected": {
+                          bgcolor: "rgba(16, 185, 129, 0.15)",
+                          color: "#10b981",
+                        },
+                      },
+                    },
+                  },
+                }}
+              >
+                {rowsPerPageOptions.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </Select>
+              <Typography variant="caption" sx={{ color: "#9ca3af" }}>
+                entries
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        {/* ================= TABLE (DESKTOP) ================= */}
+        {!isMobile ? (
+          <StyledTableContainer>
+            <Table>
+              <StyledTableHead>
+                <TableRow>
+                  <TableCell align="center">Date</TableCell>
+                  <TableCell align="center">Collect Person</TableCell>
+                  <TableCell align="center">₹500</TableCell>
+                  <TableCell align="center">₹200</TableCell>
+                  <TableCell align="center">₹100</TableCell>
+                  <TableCell align="center">₹50</TableCell>
+                  <TableCell align="center">₹20</TableCell>
+                  <TableCell align="center">₹10</TableCell>
+                  <TableCell align="center">Coins</TableCell>
+                  <TableCell align="center">Online</TableCell>
+                  <TableCell align="center">Total</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </StyledTableHead>
+              <TableBody>
+                {data.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={12} align="center" sx={{ py: 6 }}>
+                      <Typography
+                        variant="body1"
+                        sx={{ color: "#9ca3af", mb: 1 }}
+                      >
+                        No entries found
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                        Click "Create" to add your first entry
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data.map((row) => (
+                    <StyledTableRow key={row._id}>
+                      <TableCell align="center">
+                        <Chip
+                          label={formatDate(row.date)}
+                          size="small"
+                          sx={{
+                            bgcolor: "rgba(156, 163, 175, 0.1)",
+                            color: "#e5e7eb",
+                            border: "1px solid rgba(156, 163, 175, 0.2)",
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label="Mahesh Nayak"
+                          size="small"
+                          sx={{
+                            bgcolor: "rgba(56, 189, 248, 0.1)",
+                            color: "#38bdf8",
+                            border: "1px solid rgba(56, 189, 248, 0.3)",
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                          }}
+                        />
+                      </TableCell>
+                      {[
+                        row.openingCash?.note500,
+                        row.openingCash?.note200,
+                        row.openingCash?.note100,
+                        row.openingCash?.note50,
+                        row.openingCash?.note20,
+                        row.openingCash?.note10,
+                      ].map((val, idx) => (
+                        <TableCell align="center" key={idx}>
+                          <Chip
+                            label={val || 0}
+                            size="small"
+                            sx={{
+                              bgcolor: "rgba(56, 189, 248, 0.08)",
+                              color: "#7dd3fc",
+                              border: "1px solid rgba(56, 189, 248, 0.2)",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              minWidth: "40px",
+                            }}
+                          />
+                        </TableCell>
+                      ))}
+                      <TableCell align="center">
+                        <Chip
+                          label={row.openingCash?.coins || 0}
+                          size="small"
+                          sx={{
+                            bgcolor: "rgba(192, 132, 252, 0.1)",
+                            color: "#c084fc",
+                            border: "1px solid rgba(192, 132, 252, 0.3)",
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip
+                          label={`₹ ${row.openingCash?.online?.toLocaleString() || 0}`}
+                          size="small"
+                          sx={{
+                            bgcolor: "rgba(34, 211, 238, 0.1)",
+                            color: "#22d3ee",
+                            border: "1px solid rgba(34, 211, 238, 0.3)",
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography
+                          sx={{
+                            color: "#34d399",
+                            fontWeight: 700,
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          ₹ {row.totalSales?.toLocaleString() || 0}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box display="flex" justifyContent="center" gap={0.5}>
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/dailycash/edit/${row._id}`)}
+                            disabled={loading}
+                            sx={{
+                              color: "#38bdf8",
+                              "&:hover": { bgcolor: "rgba(56, 189, 248, 0.1)" },
+                            }}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSelectedId(row._id);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={loading}
+                            sx={{
+                              color: "#f43f5e",
+                              "&:hover": { bgcolor: "rgba(244, 63, 94, 0.1)" },
+                            }}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </StyledTableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </StyledTableContainer>
+        ) : (
+          /* ================= MOBILE CARD VIEW ================= */
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {data.length === 0 ? (
+              <Box
+                sx={{
+                  bgcolor: "#111827",
+                  borderRadius: "16px",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  p: 4,
+                  textAlign: "center",
+                }}
+              >
+                <Typography variant="body1" sx={{ color: "#9ca3af", mb: 1 }}>
+                  No entries found
+                </Typography>
+                <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                  Click "Create" to add your first entry
+                </Typography>
+              </Box>
+            ) : (
+              data.map((row) => (
+                <Card
+                  key={row._id}
+                  sx={{
+                    bgcolor: "#111827",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+                  }}
+                >
+                  <Box sx={{ p: 2.5 }}>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      mb={2}
+                    >
+                      <Chip
+                        label={formatDate(row.date)}
+                        size="small"
+                        sx={{
+                          bgcolor: "rgba(156, 163, 175, 0.1)",
+                          color: "#e5e7eb",
+                          border: "1px solid rgba(156, 163, 175, 0.2)",
+                          fontSize: "0.7rem",
+                          fontWeight: 600,
+                        }}
+                      />
+                      <Typography
+                        sx={{ color: "#34d399", fontWeight: 700, fontSize: "1rem" }}
+                      >
+                        ₹ {row.totalSales?.toLocaleString() || 0}
+                      </Typography>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(4, 1fr)",
+                        gap: 1,
+                        mb: 2,
+                      }}
+                    >
+                      {[
+                        { label: "₹500", value: row.openingCash?.note500, color: "#7dd3fc" },
+                        { label: "₹200", value: row.openingCash?.note200, color: "#7dd3fc" },
+                        { label: "₹100", value: row.openingCash?.note100, color: "#7dd3fc" },
+                        { label: "₹50", value: row.openingCash?.note50, color: "#7dd3fc" },
+                        { label: "₹20", value: row.openingCash?.note20, color: "#7dd3fc" },
+                        { label: "₹10", value: row.openingCash?.note10, color: "#7dd3fc" },
+                        { label: "Coins", value: row.openingCash?.coins, color: "#c084fc" },
+                        {
+                          label: "Online",
+                          value: `₹${row.openingCash?.online || 0}`,
+                          color: "#22d3ee",
+                        },
+                      ].map((item, idx) => (
+                        <Box
+                          key={idx}
+                          sx={{
+                            textAlign: "center",
+                            p: 1,
+                            borderRadius: "10px",
+                            bgcolor: "rgba(255, 255, 255, 0.03)",
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#6b7280", fontSize: "0.65rem" }}
+                          >
+                            {item.label}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              color: item.color,
+                              fontWeight: 700,
+                              fontSize: "0.8rem",
+                              mt: 0.3,
+                            }}
+                          >
+                            {item.value || 0}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+
+                    <Box
+                      display="flex"
+                      gap={1}
+                      pt={2}
+                      sx={{ borderTop: "1px solid rgba(255, 255, 255, 0.05)" }}
+                    >
+                      <Button
+                        fullWidth
+                        size="small"
+                        startIcon={<Edit />}
+                        onClick={() => navigate(`/dailycash/edit/${row._id}`)}
+                        disabled={loading}
+                        sx={{
+                          bgcolor: "rgba(56, 189, 248, 0.1)",
+                          color: "#38bdf8",
+                          textTransform: "none",
+                          fontWeight: 600,
+                          borderRadius: "10px",
+                          "&:hover": { bgcolor: "rgba(56, 189, 248, 0.2)" },
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        fullWidth
+                        size="small"
+                        startIcon={<Delete />}
+                        onClick={() => {
+                          setSelectedId(row._id);
+                          setDeleteDialogOpen(true);
+                        }}
+                        disabled={loading}
+                        sx={{
+                          bgcolor: "rgba(244, 63, 94, 0.1)",
+                          color: "#f43f5e",
+                          textTransform: "none",
+                          fontWeight: 600,
+                          borderRadius: "10px",
+                          "&:hover": { bgcolor: "rgba(244, 63, 94, 0.2)" },
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Box>
+                  </Box>
+                </Card>
+              ))
+            )}
+          </Box>
+        )}
+
+        {/* ================= PAGINATION ================= */}
+        {totalEntries > 0 && (
+          <Box
+            display="flex"
+            flexDirection={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems="center"
+            gap={2}
+            mt={3}
+          >
+            <Typography variant="caption" sx={{ color: "#9ca3af" }}>
+              Showing {(page - 1) * rowsPerPage + 1} to{" "}
+              {Math.min(page * rowsPerPage, totalEntries)} of {totalEntries} entries
+            </Typography>
+
+            <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
+              <PaginationButton
+                onClick={() => handlePageChange(1)}
+                disabled={page === 1}
+                title="First"
+              >
+                <FirstPage fontSize="small" />
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+                title="Previous"
+              >
+                <ChevronLeft fontSize="small" />
+              </PaginationButton>
+
+              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+                let pageNum;
+                if (totalPages <= 5) pageNum = idx + 1;
+                else if (page <= 3) pageNum = idx + 1;
+                else if (page >= totalPages - 2) pageNum = totalPages - 4 + idx;
+                else pageNum = page - 2 + idx;
+
+                const isActive = page === pageNum;
+
+                return (
+                  <Button
+                    key={idx}
+                    onClick={() => handlePageChange(pageNum)}
+                    sx={{
+                      minWidth: "38px",
+                      height: "38px",
+                      p: 0,
+                      borderRadius: "10px",
+                      fontSize: "0.85rem",
+                      fontWeight: 700,
+                      color: isActive ? "#ffffff" : "#9ca3af",
+                      bgcolor: isActive ? "#10b981" : "transparent",
+                      border: isActive
+                        ? "1px solid #10b981"
+                        : "1px solid rgba(255, 255, 255, 0.1)",
+                      boxShadow: isActive
+                        ? "0 4px 14px rgba(16, 185, 129, 0.3)"
+                        : "none",
+                      "&:hover": {
+                        bgcolor: isActive
+                          ? "#059669"
+                          : "rgba(16, 185, 129, 0.1)",
+                        borderColor: "#10b981",
+                        color: isActive ? "#ffffff" : "#10b981",
+                      },
+                    }}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+
+              <PaginationButton
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+                title="Next"
+              >
+                <ChevronRight fontSize="small" />
+              </PaginationButton>
+              <PaginationButton
+                onClick={() => handlePageChange(totalPages)}
+                disabled={page === totalPages}
+                title="Last"
+              >
+                <LastPage fontSize="small" />
+              </PaginationButton>
+            </Box>
+          </Box>
+        )}
+      </Box>
+
+      {/* ================= DELETE CONFIRMATION DIALOG ================= */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: "#111827",
+            borderRadius: "16px",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.6)",
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: "#f43f5e", fontWeight: 700 }}>
+          Confirm Delete
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "#9ca3af" }}>
+            Are you sure you want to delete this entry? This action cannot be
+            undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={() => setDeleteDialogOpen(false)}
+            disabled={loading}
+            sx={{
+              color: "#9ca3af",
+              textTransform: "none",
+              fontWeight: 600,
+              borderRadius: "10px",
+              "&:hover": { bgcolor: "rgba(156, 163, 175, 0.1)" },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => selectedId && handleDelete(selectedId)}
+            disabled={loading}
+            variant="contained"
+            sx={{
+              bgcolor: "#f43f5e",
+              color: "#ffffff",
+              textTransform: "none",
+              fontWeight: 700,
+              borderRadius: "10px",
+              px: 3,
+              boxShadow: "0 4px 14px rgba(244, 63, 94, 0.3)",
+              "&:hover": { bgcolor: "#e11d48" },
+            }}
+          >
+            {loading ? <CircularProgress size={20} sx={{ color: "#fff" }} /> : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ================= DELETE ALL CONFIRMATION DIALOG ================= */}
+      <Dialog
+        open={deleteAllDialogOpen}
+        onClose={() => setDeleteAllDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: "#111827",
+            borderRadius: "16px",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.6)",
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: "#f43f5e", fontWeight: 700 }}>
+          Delete All Entries
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "#9ca3af" }}>
+            Are you sure you want to delete ALL entries? This action cannot be
+            undone and all data will be permanently lost.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={() => setDeleteAllDialogOpen(false)}
+            disabled={loading}
+            sx={{
+              color: "#9ca3af",
+              textTransform: "none",
+              fontWeight: 600,
+              borderRadius: "10px",
+              "&:hover": { bgcolor: "rgba(156, 163, 175, 0.1)" },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteAll}
+            disabled={loading}
+            variant="contained"
+            sx={{
+              bgcolor: "#f43f5e",
+              color: "#ffffff",
+              textTransform: "none",
+              fontWeight: 700,
+              borderRadius: "10px",
+              px: 3,
+              boxShadow: "0 4px 14px rgba(244, 63, 94, 0.3)",
+              "&:hover": { bgcolor: "#e11d48" },
+            }}
+          >
+            {loading ? (
+              <CircularProgress size={20} sx={{ color: "#fff" }} />
+            ) : (
+              "Delete All"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
+
+// ===================== PAGINATION BUTTON HELPER =====================
+
+const PaginationButton: React.FC<{
+  onClick: () => void;
+  disabled: boolean;
+  title: string;
+  children: React.ReactNode;
+}> = ({ onClick, disabled, title, children }) => (
+  <IconButton
+    onClick={onClick}
+    disabled={disabled}
+    title={title}
+    sx={{
+      width: "38px",
+      height: "38px",
+      borderRadius: "10px",
+      color: "#9ca3af",
+      border: "1px solid rgba(255, 255, 255, 0.1)",
+      "&:hover": {
+        bgcolor: "rgba(16, 185, 129, 0.1)",
+        borderColor: "#10b981",
+        color: "#10b981",
+      },
+      "&.Mui-disabled": {
+        color: "rgba(156, 163, 175, 0.3)",
+        borderColor: "rgba(255, 255, 255, 0.05)",
+      },
+    }}
+  >
+    {children}
+  </IconButton>
+);
 
 export default DailyCashSummary;

@@ -9,21 +9,9 @@ import Dashboard from "./pages/Dashboard";
 import DailyCashSummery from "./pages/DailyCashSummery/DailyCashSummery";
 import DailyCashSummaryForm from "./pages/DailyCashSummery/DailyCashSummeryFrom";
 
+import CreditCustomerEntry from "./pages/CreditCustomerEntry";
 
 
-import ItemStock from "./pages/inventory/ItemStock";
-import ComponentStock from "./pages/inventory/ComponentStock";
-import Reports from "./pages/Reports/Reports";
-import DailySaleReport from "./pages/Reports/DailySaleReport";
-import ProfitEstimationReport from "./pages/Reports/ProfitEstimationReport";
-import PurchaseVsSaleReport from "./pages/Reports/PurchaseVsSaleReport";
-import DeliveryBoyCollectionReport from "./pages/Reports/DeliveryBoyCollectionReport";
-import CreditOutstandingReport from "./pages/Reports/CreditOutstandingReport";
-import ShortageReport from "./pages/Reports/ShortageReport";
-import StockReport from "./pages/Reports/StockReport";
-import ItemWiseSummary from "./pages/Reports/ItemWiseSummary";
-import UserTable from "./pages/users/UserTable";
-import UserForm from "./pages/users/UserForm";
 import DailyCashSummeryFromUpdate from "./pages/DailyCashSummery/DailyCashSummeryFromUpdate";
 
 import ForgotPassword from "./common/ForgotPassword";
@@ -36,28 +24,28 @@ import PublicRoute from "./route/PublicRoute";
 
 import { Toaster } from "react-hot-toast";
 
-import PermissionTable from "./pages/users/PermissionTable";
-import PermissionForm from "./pages/users/PermissionForm";
+
 
 
 // Import 404 Page
 import NotFound from "./pages/NotFound";
-import GreetingsPage from "./pages/GreetingsPage";
 
-import CustomerList from "./pages/parties/CustomerList";
-import CustomerCreate from "./pages/parties/CustomerCreate";
-import CustomerEdit from "./pages/parties/CustomerEdit";
-import CategoryList from "./pages/Category/CategoryList";
-import CategoryCreate from "./pages/Category/CategoryCreate";
-import CategoryEdit from "./pages/Category/CategoryEdit";
-import ProductList from "./pages/product/ProductList";
-import ProductCreate from "./pages/product/ProductCreate";
-import ProductEdit from "./pages/product/ProductEdit";
+
+
+
 import SaleInvoice from "./pages/sale/SaleInvoice";
 import SaleList from "./pages/sale/SaleList";
 import SaleEdit from "./pages/sale/SaleEdit";
 import SaleReturnCreate from "./pages/SaleReturn/SaleReturnCreate";
 import SaleReturnList from "./pages/SaleReturn/SaleReturnList";
+import ExpenseEntry from "./pages/ExpenseEntry";
+import PaymentReceivedEntry from "./pages/PaymentReceivedEntry";
+import CustomerManagement from "./pages/parties/CustomerManagement";
+import CustomerCreate from "./pages/parties/CustomerCreate";
+import CustomerUpdate from "./pages/parties/CustomerUpdate";
+import AddProduct from "./pages/product/AddProduct";
+import ProductTable from "./pages/product/ProductTable";
+import UpdateProduct from "./pages/product/UpdateProduct";
 
 function App() {
   return (
@@ -81,22 +69,18 @@ function App() {
 
             {/* Sale Routes */}
           <Route path="/sale/invoice" element={<SaleInvoice />} />
-          <Route path="/sale/invoice-list" element={<SaleList />} />
+          <Route path="/load-items" element={<SaleList />} />
           <Route path="/sale/invoice/edit/:id" element={<SaleEdit />} />
 
 
 
-<Route path="/sale/return/:saleId" element={<SaleReturnCreate />} />
+<Route path="/return-items/create" element={<SaleReturnCreate />} />
 <Route path="/sale/return-list" element={<SaleReturnList />} />
 
-            <Route path="/master/category" element={<CategoryList />} />
-            <Route path="/master/category/create" element={<CategoryCreate />} />
-            <Route path="/master/category/edit/:id" element={<CategoryEdit />} />
+            
 
 
-            <Route path="/master/product" element={<ProductList />} />
-            <Route path="/master/product/create" element={<ProductCreate />} />
-            <Route path="/master/product/edit/:id" element={<ProductEdit />} />
+        
 
             
 
@@ -107,31 +91,16 @@ function App() {
               path="dailycash/create" 
               element={<DailyCashSummaryForm refresh={() => {}} />} 
             />
-            <Route path="dailycash/get" element={<DailyCashSummery />} />
+            <Route path="note-summary-entry" element={<DailyCashSummery />} />
             <Route path="dailycash/edit/:id" element={<DailyCashSummeryFromUpdate />} />
 
             
-            {/* Inventory Routes */}
-            <Route path="inventory/stock" element={<ItemStock />} />
-            <Route path="inventory/ComponentStock" element={<ComponentStock />} />
+          
 
-            {/* Reports Routes */}
-            <Route path="reports/get" element={<Reports />} />
-            <Route path="reports/daily-sale" element={<DailySaleReport />} />
-            <Route path="reports/profit" element={<ProfitEstimationReport />} />
-            <Route path="reports/purchase-vs-sale" element={<PurchaseVsSaleReport />} />
-            <Route path="reports/delivery-boy" element={<DeliveryBoyCollectionReport />} />
-            <Route path="reports/credit" element={<CreditOutstandingReport />} />
-            <Route path="reports/shortage" element={<ShortageReport />} />
-            <Route path="reports/stock" element={<StockReport />} />
-            <Route path="reports/item-wise" element={<ItemWiseSummary />} />
+         
 
-            {/* Users Routes */}
-            <Route path="users/list" element={<UserTable />} />
-            <Route path="users/create" element={<UserForm isStandalone={true} />} />
-            <Route path="users/permissions" element={<PermissionTable />} />
-            <Route path="users/permissions/create" element={<PermissionForm />} />
-            <Route path="users/permissions/edit/:id" element={<PermissionForm />} />
+           
+          
 
 
 
@@ -140,18 +109,23 @@ function App() {
     
 
 
-            {/* Greetings Routes */}
-            <Route path="greetings/get" element={<GreetingsPage />} />
+ 
 
 
+<Route path="/expenses-entry" element={<ExpenseEntry />} />
 
+<Route path="/credit-customer-entry" element={<CreditCustomerEntry />} />
 
-            {/* new routes working  */}
+<Route path="/payment-received-entry" element={<PaymentReceivedEntry />} />
 
+<Route path="/customer-entry" element={<CustomerManagement />} />
+<Route path="/customers/create" element={<CustomerCreate />} />
+<Route path="/customers/edit/:id" element={<CustomerUpdate />} />
 
-<Route path="/parties/customer" element={<CustomerList />} />
-<Route path="/parties/customer/create" element={<CustomerCreate />} />
-<Route path="/parties/customer/edit/:id" element={<CustomerEdit />} />
+<Route path="/products" element={<ProductTable />} />
+<Route path="/products/add" element={<AddProduct />} />
+<Route path="/products/edit/:id" element={<UpdateProduct />} />
+
 
 
           </Route>

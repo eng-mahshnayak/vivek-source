@@ -2,7 +2,7 @@ const User = require('../models/user.model.js');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const { sendOTPEmail } = require ('../services/emailService.js');
+
 const { generateToken } = require('../middleware/jwtTokenVerify.middleware.js');
 
 
@@ -53,7 +53,7 @@ const  forgotPassword = async (req, res) => {
 
         // Send OTP via email
         try {
-            await sendOTPEmail(email, otp);
+           
         } catch (emailError) {
             // If email fails, clear OTP from database
             user.resetPasswordOTP = null;

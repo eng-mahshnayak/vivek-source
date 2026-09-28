@@ -1,707 +1,465 @@
-
-
-
-
-
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Grid,
   Card,
+  CardActionArea,
   Typography,
-  LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   Chip,
+  Button,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { TrendingUp } from "@mui/icons-material";
-
-import { Bar } from "react-chartjs-2";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
+  LocalShipping,
+  AssignmentReturn,
+  Group,
+  Payments,
+  PointOfSale,
+  LocalGasStation,
+  Dashboard as DashboardIcon,
+  Visibility,
+  FiberManualRecord,
+  Inventory2,
+  Calculate,
+} from "@mui/icons-material";
 
-// ✅ IMPORTANT: Register scales (fix for "category not registered" error)
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// ===================== STYLED DARK COMPONENTS =====================
 
-// ===================== STATS CARD =====================
+const DarkBanner = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "24px",
+  marginBottom: "20px",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+}));
 
-const StatsCard = styled(Card)<{ gradient: string }>(({ gradient }) => ({
-  borderRadius: "20px",
-  padding: "20px",
-  background: gradient,
-  color: "white",
+const MetricCard = styled(Box)(() => ({
+  backgroundColor: "#111827",
+  borderRadius: "12px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "16px 20px",
   height: "100%",
-  minHeight: "170px",
   display: "flex",
   flexDirection: "column",
-  justifyContent: "space-between",
-  boxShadow: "0 12px 30px rgba(0,0,0,0.15)",
-  transition: "0.3s ease",
+  justifyContent: "center",
+}));
+
+const ActionCard = styled(Card)(() => ({
+  borderRadius: "16px",
+  backgroundColor: "#111827",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+  transition: "all 0.3s ease",
+  height: "100%",
+  position: "relative",
+  overflow: "hidden",
   "&:hover": {
     transform: "translateY(-4px)",
+    boxShadow: "0 12px 28px rgba(16, 185, 129, 0.15)",
+    borderColor: "#10b981",
   },
 }));
 
-// ===================== DASHBOARD =====================
+const IconBox = styled(Box)<{ bgcolor: string; iconcolor: string }>(
+  ({ bgcolor, iconcolor }) => ({
+    width: "48px",
+    height: "48px",
+    borderRadius: "12px",
+    backgroundColor: bgcolor,
+    color: iconcolor,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  })
+);
+
+// ===================== DASHBOARD COMPONENT =====================
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
 
-  const API_URL = import.meta.env.VITE_API_URL;
+  // Top summary metrics
+  const summaryMetrics = [
+    { label: "1. Loaded Stock", amount: "₹ 8,000.00", color: "#34d399" },
+    { label: "2. Returns & Unsold", amount: "₹ 500.00", color: "#38bdf8" },
+    { label: "3 & 4. Credit & Payments", amount: "₹ 3,500.00", color: "#fbbf24" },
+    { label: "5 & 6. Cash Notes & Exp.", amount: "₹ 7,100.00", color: "#c084fc" },
+  ];
 
-  const statistics = {
-    totalItems: 65,
-    inStock: 4,
-    totalValue: 68000,
-    outOfStock: 1,
-    averagePrice: 799,
-    totalProducts: 6,
-  };
-
- 
-
-  const [dashboardData, setDashboardData] = useState({
-    statistics: {
-      totalSellInvoices: 0,
-      totalPurchaseInvoices: 0,
-      totalCustomers: 0,
-      totalUsers: 0,
-      totalNote: 0,
+  // Quick Action Cards (without Final Calculation — that's now in banner)
+  const quickActions = [
+    {
+      id: "1",
+      title: "1. LOAD ITEMS",
+      desc: "Add initial loaded inventory & rates",
+      badgeText: "2 Items",
+      badgeBg: "#132e29",
+      badgeColor: "#34d399",
+      amountText: "Total: ₹ 8,000.00",
+      icon: <LocalShipping />,
+      iconBg: "#132e29",
+      iconColor: "#34d399",
+      route: "/load-items",
     },
-    recentSells: [],
-    chartData: {
-      labels: [],
-      datasets: [{
-        label: 'Current Stock',
-        data: [],
-        backgroundColor: []
-      }]
+    {
+      id: "2",
+      title: "2. RETURN ITEMS",
+      desc: "Log unsold or damaged goods returned",
+      badgeText: "1 Returns",
+      badgeBg: "#0c2a3a",
+      badgeColor: "#38bdf8",
+      amountText: "Total: ₹ 500.00",
+      icon: <AssignmentReturn />,
+      iconBg: "#0c2a3a",
+      iconColor: "#38bdf8",
+      route: "/sale/return-list",
     },
-    topStocks: []
-  });
-
-  // In your Dashboard component
-useEffect(() => {
-    const fetchDashboardData = async () => {
-        try {
-
-            const response = await axios.get(`${API_URL}/inventorystock/dashboard`);
-            if (response.data.success) {
-
-                console.log(response.data.data,'response.data.data');
-                
-                setDashboardData(response.data.data);
-            }
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-        }
-    };
-    
-    fetchDashboardData();
-}, []);
-
+    {
+      id: "3",
+      title: "3. CREDIT CUSTOMER",
+      desc: "Record credit sales & party ledger updates",
+      badgeText: "1 Entries",
+      badgeBg: "#332208",
+      badgeColor: "#fbbf24",
+      amountText: "Total: ₹ 1,500.00",
+      icon: <Group />,
+      iconBg: "#332208",
+      iconColor: "#fbbf24",
+      route: "/credit-customer-entry",
+    },
+    {
+      id: "4",
+      title: "4. PAYMENT RECEIVED",
+      desc: "Log cash collections, UPI & Online receipts",
+      badgeText: "1 Payments",
+      badgeBg: "#1e1b4b",
+      badgeColor: "#a78bfa",
+      amountText: "Total: ₹ 2,000.00",
+      icon: <Payments />,
+      iconBg: "#1e1b4b",
+      iconColor: "#a78bfa",
+      route: "/payment-received-entry",
+    },
+    {
+      id: "5",
+      title: "5. NOTE SUMMARY",
+      desc: "Currency denomination counter breakdown",
+      badgeText: "Cash Counter",
+      badgeBg: "#2e1065",
+      badgeColor: "#c084fc",
+      amountText: "Cash Total: ₹ 5,300.00",
+      icon: <PointOfSale />,
+      iconBg: "#2e1065",
+      iconColor: "#c084fc",
+      route: "/note-summary-entry",
+    },
+    {
+      id: "6",
+      title: "6. EXPENSES ENTRY",
+      desc: "Fuel, toll, food & route trip expenses",
+      badgeText: "1 Expenses",
+      badgeBg: "#31121d",
+      badgeColor: "#f43f5e",
+      amountText: "Total: ₹ 1,800.00",
+      icon: <LocalGasStation />,
+      iconBg: "#31121d",
+      iconColor: "#f43f5e",
+      route: "/expenses-entry",
+    },
+    // ✅ NEW: PRODUCT LIST — replaced Final Calculation position
+    {
+      id: "7",
+      title: "7. PRODUCTS",
+      desc: "Manage items, MRP, rate and units",
+      badgeText: "Catalog",
+      badgeBg: "#2e1065",
+      badgeColor: "#c084fc",
+      amountText: "Add / Edit Items",
+      icon: <Inventory2 />,
+      iconBg: "#2e1065",
+      iconColor: "#c084fc",
+      route: "/products",
+    },
+  ];
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        px: { xs: 2, sm: 3, md: 4 },
+        bgcolor: "#090d16",
+        px: { xs: 1.5, sm: 3, md: 4 },
         py: { xs: 2, md: 3 },
-        bgcolor: "#f4f6f9",
+        color: "#ffffff",
       }}
     >
-      <Box sx={{ maxWidth: 1400, mx: "auto" }}>
-        {/* ================= STATS SECTION ================= */}
-        <Grid container spacing={2}>
-          {/* TOTAL ITEMS */}
-         <Grid
-                size={{ xs: 12, sm: 6, md: 4 }}
+      <Box sx={{ width: "100%", maxWidth: 1350, mx: "auto" }}>
+        {/* ================= HEADER BANNER ================= */}
+        <DarkBanner>
+          <Box
+            display="flex"
+            flexDirection={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", md: "center" }}
+            gap={2}
+          >
+            <Box>
+              <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                <FiberManualRecord sx={{ fontSize: 12, color: "#10b981" }} />
+                <Typography
+                  variant="caption"
+                  fontWeight="bold"
+                  sx={{ color: "#10b981", letterSpacing: 0.5 }}
+                >
+                  Main Hub
+                </Typography>
+              </Box>
+
+              <Typography
+                variant="h4"
+                fontWeight="800"
                 sx={{
-                  flexBasis: { lg: "20%" },
-                  maxWidth: { lg: "20%" },
+                  fontSize: { xs: "1.4rem", sm: "1.8rem", md: "2.1rem" },
+                  letterSpacing: 0.5,
+                  color: "#ffffff",
                 }}
               >
-            <StatsCard gradient="linear-gradient(135deg,#3b82f6,#2563eb)">
-              <Box>
-                <Typography variant="caption"> SELL ENTRIES</Typography>
-                <Typography variant="h4" fontWeight="bold">
-                  {dashboardData.statistics.totalSellInvoices}
-                </Typography>
-              </Box>
-              <Box display="flex" alignItems="center" gap={1}>
-                <TrendingUp fontSize="small" />
-                <Typography variant="caption">
-                  +12% from last month
-                </Typography>
-              </Box>
-            </StatsCard>
-          </Grid>
-
-
-          {/* IN PURCHASE */}
-          {/* <Grid item xs={12} sm={6} md={4} lg={2.4 as any}> */}
-           <Grid
-                size={{ xs: 12, sm: 6, md: 4 }}
-                sx={{
-                  flexBasis: { lg: "18%" },
-                  maxWidth: { lg: "18%" },
-                }}
-              >
-            <StatsCard gradient="linear-gradient(135deg,#10b981,#059669)">
-              <Box>
-                <Typography variant="caption"> PURCHASE ENTRIES</Typography>
-                <Typography variant="h4" fontWeight="bold">
-                   {dashboardData.statistics.totalPurchaseInvoices}
-                </Typography>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={(statistics.inStock / statistics.totalProducts) * 100}
-                sx={{
-                  height: 5,
-                  borderRadius: 3,
-                  bgcolor: "rgba(255,255,255,0.3)",
-                  "& .MuiLinearProgress-bar": { bgcolor: "white" },
-                }}
-              />
-            </StatsCard>
-          </Grid>
-
-
-        
-
-          {/* TOTAL VALUE */}
-          
-
-
-          {/* TOTAL VALUE */}
-          <Grid
-                size={{ xs: 12, sm: 6, md: 4 }}
-                sx={{
-                  flexBasis: { lg: "18%" },
-                  maxWidth: { lg: "18%" },
-                }}
-              >
-            <StatsCard gradient="linear-gradient(135deg,#f59e0b,#d97706)">
-              <Box>
-                <Typography variant="caption">ACTIVE CUSTOMERS</Typography>
-                <Typography variant="h4" fontWeight="bold">
-                   {dashboardData.statistics.totalCustomers}
-                </Typography>
-              </Box>
-              <Typography variant="caption">
-                +8.5% from last month
+                VEHICLE LOADING & SETTLEMENT
               </Typography>
-            </StatsCard>
-          </Grid>
 
-          {/* OUT OF STOCK */}
-
-          <Grid
-                size={{ xs: 12, sm: 6, md: 4 }}
-               sx={{
-                  flexBasis: { lg: "18%" },
-                  maxWidth: { lg: "18%" },
-                }}
-              >
-            
-            <StatsCard gradient="linear-gradient(135deg,#ef4444,#dc2626)">
-              <Box>
-                <Typography variant="caption">SYSTEM USERS</Typography>
-                <Typography variant="h4" fontWeight="bold">
-                  {dashboardData.statistics.totalUsers}
-                </Typography>
-              </Box>
-              <Typography variant="caption">
-                ⚠ Critical items
+              <Typography variant="body2" sx={{ color: "#9ca3af", mt: 0.5 }}>
+                Select any module below to enter stock, returns, credits,
+                payments, cash notes, or view final settlement.
               </Typography>
-            </StatsCard>
-          </Grid>
+            </Box>
 
-          
-
-          {/* AVG PRICE */}
-          <Grid
-                size={{ xs: 12, sm: 6, md: 4 }}
+            {/* ✅ ACTION BUTTONS GROUP — Final Calculation + View Settlement */}
+            <Box
+              display="flex"
+              gap={1.5}
+              flexWrap="wrap"
+              sx={{ width: { xs: "100%", md: "auto" } }}
+            >
+              {/* Final Calculation button (moved from grid) */}
+              <Button
+                variant="outlined"
+                startIcon={<Calculate />}
+                onClick={() => navigate("/final-calculation")}
                 sx={{
-                  flexBasis: { lg: "19%" },
-                  maxWidth: { lg: "19%" },
+                  color: "#2dd4bf",
+                  borderColor: "rgba(45, 212, 191, 0.4)",
+                  fontWeight: "bold",
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 3,
+                  py: 1.2,
+                  flex: { xs: 1, md: "none" },
+                  "&:hover": {
+                    borderColor: "#2dd4bf",
+                    bgcolor: "rgba(45, 212, 191, 0.08)",
+                    boxShadow: "0 8px 20px rgba(45, 212, 191, 0.15)",
+                  },
                 }}
               >
-            <StatsCard gradient="linear-gradient(135deg,#ec4899,#db2777)">
-              <Box>
-                <Typography variant="caption">CASH SUMMERY</Typography>
-                <Typography variant="h4" fontWeight="bold">
-                   {dashboardData.statistics.totalNote}
+                Final Calculation
+              </Button>
+
+              {/* View Settlement button (original) */}
+              <Button
+                variant="contained"
+                startIcon={<Visibility />}
+                onClick={() => navigate("/final-calculation")}
+                sx={{
+                  bgcolor: "#10b981",
+                  color: "#ffffff",
+                  fontWeight: "bold",
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 3,
+                  py: 1.2,
+                  flex: { xs: 1, md: "none" },
+                  boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+                  "&:hover": { bgcolor: "#059669" },
+                }}
+              >
+                View Settlement
+              </Button>
+            </Box>
+          </Box>
+        </DarkBanner>
+
+        {/* ================= METRICS SUMMARY BAR ================= */}
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {summaryMetrics.map((metric, index) => (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={index}>
+              <MetricCard>
+                <Typography
+                  variant="caption"
+                  sx={{ color: "#9ca3af", fontSize: "0.75rem" }}
+                >
+                  {metric.label}
                 </Typography>
-              </Box>
-              <Typography variant="caption">
-                Per product average
-              </Typography>
-            </StatsCard>
-          </Grid>
+                <Typography
+                  variant="h6"
+                  fontWeight="bold"
+                  sx={{
+                    color: metric.color,
+                    mt: 0.5,
+                    fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                  }}
+                >
+                  {metric.amount}
+                </Typography>
+              </MetricCard>
+            </Grid>
+          ))}
         </Grid>
 
-        {/* ================= CHART SECTION ================= */}
-        <Box mt={5}>
-          <Card sx={{ p: 3, borderRadius: 4 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Stock by Category
-            </Typography>
+        {/* ================= MAIN CARDS GRID ================= */}
+        <Grid container spacing={2.5}>
+          {quickActions.map((item:any) => (
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={item.id}>
+              <ActionCard>
+                <CardActionArea
+                  onClick={() => navigate(item.route)}
+                  sx={{ p: 2.5, height: "100%" }}
+                >
+                  {/* Top Row: Icon + Badge */}
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    mb={2}
+                  >
+                    <IconBox bgcolor={item.iconBg} iconcolor={item.iconColor}>
+                      {item.icon}
+                    </IconBox>
 
-            <Box sx={{ width: "100%", height: 350 }}>
-              <Bar
-                data={{
-                  labels: dashboardData?.chartData?.labels,
-                  datasets: dashboardData.chartData.datasets
-
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                }}
-              />
-            </Box>
-          </Card>
-        </Box>
-
-        {/* ================= RECENT PRODUCTS TABLE ================= */}
-        <Box mt={5}>
-          <Card sx={{ p: 3, borderRadius: 4 }}>
-            <Typography variant="h6" fontWeight="bold" mb={2}>
-              Recent Products
-            </Typography>
-
-            <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: "#f4f6f9" }}>
-                    <TableCell><b>invoiceNumber</b></TableCell>
-                    <TableCell><b>InvoiceDate</b></TableCell>
-                     <TableCell><b>CustomerName</b></TableCell>
-                    <TableCell><b>InvoiceVaue</b></TableCell>
-                    <TableCell><b>paidAmount</b></TableCell>
-                    <TableCell><b>PaymentStatus</b></TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {dashboardData.recentSells.map((row:any, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{row.invoiceNumber}</TableCell>
-                     <TableCell>
-                        {new Date(row.invoiceDate).toLocaleDateString("en-IN")}
-                      </TableCell>
-                         <TableCell>{row.supplierName}</TableCell>
-                      <TableCell>₹{row.grandTotal.toLocaleString()}</TableCell>
-                      <TableCell>₹{row.paidAmount.toLocaleString()}</TableCell>
-                     <TableCell>
                     <Chip
-                      label={
-                        row.paymentStatus === "paid"
-                          ? "Paid"
-                          : row.paymentStatus === "partial"
-                          ? "Partial"
-                          : row.paymentStatus === "overdue"
-                          ? "Overdue"
-                          : "Pending"
-                      }
-                      color={
-                        row.paymentStatus === "paid"
-                          ? "success"
-                          : row.paymentStatus === "partial"
-                          ? "warning"
-                          : row.paymentStatus === "overdue"
-                          ? "error"
-                          : "default"
-                      }
+                      label={item.badgeText}
                       size="small"
+                      sx={{
+                        bgcolor: item.badgeBg,
+                        color: item.badgeColor,
+                        fontWeight: "bold",
+                        fontSize: "0.75rem",
+                        borderRadius: "8px",
+                      }}
                     />
-                  </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Card>
-        </Box>
+                  </Box>
+
+                  {/* Title & Description */}
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight="bold"
+                    sx={{
+                      color: "#ffffff",
+                      fontSize: { xs: "0.95rem", sm: "1.05rem" },
+                    }}
+                  >
+                    {item.title}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#9ca3af",
+                      display: "block",
+                      minHeight: "36px",
+                      mt: 0.5,
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {item.desc}
+                  </Typography>
+
+                  {/* Bottom Amount Line */}
+                  <Typography
+                    variant="caption"
+                    fontWeight="bold"
+                    sx={{
+                      color: item.amountColor || item.iconColor,
+                      display: "block",
+                      mt: 2,
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    {item.amountText}
+                  </Typography>
+                </CardActionArea>
+              </ActionCard>
+            </Grid>
+          ))}
+
+          {/* CUSTOMER LIST CARD */}
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+            <ActionCard sx={{ border: "1px dashed rgba(255,255,255,0.2)" }}>
+              <CardActionArea
+                onClick={() => navigate("/customer-entry")}
+                sx={{ p: 2.5, height: "100%" }}
+              >
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={2}
+                >
+                  <IconBox bgcolor="#0c2a3a" iconcolor="#38bdf8">
+                    <DashboardIcon />
+                  </IconBox>
+                  <Chip
+                    label="Overview"
+                    size="small"
+                    sx={{
+                      bgcolor: "#0c2a3a",
+                      color: "#38bdf8",
+                      fontWeight: "bold",
+                      fontSize: "0.75rem",
+                      borderRadius: "8px",
+                    }}
+                  />
+                </Box>
+
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="bold"
+                  sx={{ color: "#ffffff" }}
+                >
+                  CUSTOMER LIST
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "#9ca3af",
+                    display: "block",
+                    minHeight: "36px",
+                    mt: 0.5,
+                  }}
+                >
+                  Manage customers, parties & their ledger
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  fontWeight="bold"
+                  sx={{
+                    color: "#38bdf8",
+                    display: "block",
+                    mt: 2,
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  System Active
+                </Typography>
+              </CardActionArea>
+            </ActionCard>
+          </Grid>
+        </Grid>
       </Box>
     </Box>
   );
 };
 
 export default Dashboard;
-       
-
-// import React, { useState, useEffect } from 'react';
-// import axios from 'axios';
-
-// import {
-//   Box,
-//   Grid,
-//   Card,
-//   Typography,
-//   Table,
-//   TableBody,
-//   TableCell,
-//   TableContainer,
-//   TableHead,
-//   TableRow,
-//   Paper,
-//   Chip,
-// } from "@mui/material";
-
-// import { styled } from "@mui/material/styles";
-// import { TrendingUp } from "@mui/icons-material";
-
-// import { Bar } from "react-chartjs-2";
-
-// import {
-//   Chart as ChartJS,
-//   CategoryScale,
-//   LinearScale,
-//   BarElement,
-//   Title,
-//   Tooltip,
-//   Legend,
-// } from "chart.js";
-
-// // Register chart
-// ChartJS.register(
-//   CategoryScale,
-//   LinearScale,
-//   BarElement,
-//   Title,
-//   Tooltip,
-//   Legend
-// );
-
-// // ================= STATS CARD =================
-// const StatsCard = styled(Card)<{ gradient: string }>(({ gradient }) => ({
-//   borderRadius: "20px",
-//   padding: "20px",
-//   background: gradient,
-//   color: "white",
-//   height: "100%",
-//   minHeight: "170px",
-//   display: "flex",
-//   flexDirection: "column",
-//   justifyContent: "space-between",
-//   boxShadow: "0 12px 30px rgba(0,0,0,0.15)",
-//   transition: "0.3s ease",
-//   "&:hover": {
-//     transform: "translateY(-4px)",
-//   },
-// }));
-
-// // ================= DASHBOARD =================
-// const Dashboard: React.FC = () => {
-
-//   const API_URL = import.meta.env.VITE_API_URL;
-
-//   const [dashboardData, setDashboardData] = useState<any>({
-//     statistics: {
-//       totalSellInvoices: 0,
-//       totalPurchaseInvoices: 0,
-//       totalCustomers: 0,
-//       totalUsers: 0,
-//       totalNote: 0,
-//     },
-//     recentSells: [],
-//     chartData: {
-//       labels: [],
-//       datasets: [{
-//         label: "Stock",
-//         data: [],
-//         backgroundColor: [],
-//       }]
-//     }
-//   });
-
-
-//   // ================= FETCH DATA =================
-//   useEffect(() => {
-
-//     const fetchDashboardData = async () => {
-
-//       try {
-
-//         const res = await axios.get(`${API_URL}/inventorystock/dashboard`);
-
-//         if (res.data.success) {
-//           setDashboardData(res.data.data);
-//         }
-
-//       } catch (err) {
-//         console.error("Dashboard error:", err);
-//       }
-
-//     };
-
-//     fetchDashboardData();
-
-//   }, [API_URL]);
-
-
-//   // ================= UI =================
-//   return (
-
-//     <Box sx={{ minHeight: "100vh", p: 3, bgcolor: "#f4f6f9" }}>
-
-//       <Box sx={{ maxWidth: 1400, mx: "auto" }}>
-
-
-//         {/* ================= STATS ================= */}
-
-//         <Grid container spacing={2}>
-
-
-//           <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-//             <StatsCard gradient="linear-gradient(135deg,#3b82f6,#2563eb)">
-//               <Box>
-//                 <Typography variant="caption">
-//                   TOTAL SELL ENTRIES
-//                 </Typography>
-
-//                 <Typography variant="h4" fontWeight="bold">
-//                   {dashboardData.statistics.totalSellInvoices}
-//                 </Typography>
-//               </Box>
-
-//               <Box display="flex" gap={1}>
-//                 <TrendingUp fontSize="small"/>
-//                 <Typography variant="caption">
-//                   +12%
-//                 </Typography>
-//               </Box>
-
-//             </StatsCard>
-//           </Grid>
-
-
-//           <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-//             <StatsCard gradient="linear-gradient(135deg,#10b981,#059669)">
-//               <Box>
-//                 <Typography variant="caption">
-//                   TOTAL PURCHASE
-//                 </Typography>
-
-//                 <Typography variant="h4">
-//                   {dashboardData.statistics.totalPurchaseInvoices}
-//                 </Typography>
-//               </Box>
-//             </StatsCard>
-//           </Grid>
-
-
-//           <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-//             <StatsCard gradient="linear-gradient(135deg,#f59e0b,#d97706)">
-//               <Box>
-//                 <Typography variant="caption">
-//                   CUSTOMERS
-//                 </Typography>
-
-//                 <Typography variant="h4">
-//                   {dashboardData.statistics.totalCustomers}
-//                 </Typography>
-//               </Box>
-//             </StatsCard>
-//           </Grid>
-
-
-//           <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-//             <StatsCard gradient="linear-gradient(135deg,#ef4444,#dc2626)">
-//               <Box>
-//                 <Typography variant="caption">
-//                   USERS
-//                 </Typography>
-
-//                 <Typography variant="h4">
-//                   {dashboardData.statistics.totalUsers}
-//                 </Typography>
-//               </Box>
-//             </StatsCard>
-//           </Grid>
-
-
-//           <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-//             <StatsCard gradient="linear-gradient(135deg,#ec4899,#db2777)">
-//               <Box>
-//                 <Typography variant="caption">
-//                   CASH SUMMARY
-//                 </Typography>
-
-//                 <Typography variant="h4">
-//                   {dashboardData.statistics.totalNote}
-//                 </Typography>
-//               </Box>
-//             </StatsCard>
-//           </Grid>
-
-
-//         </Grid>
-
-
-//         {/* ================= CHART ================= */}
-
-//         <Box mt={5}>
-
-//           <Card sx={{ p: 3, borderRadius: 4 }}>
-
-//             <Typography variant="h6">
-//               Stock Chart
-//             </Typography>
-
-//             <Box sx={{ height: 350 }}>
-
-//               {dashboardData.chartData.labels.length > 0 ? (
-
-//                 <Bar
-//                   data={dashboardData.chartData}
-//                   options={{ responsive: true }}
-//                 />
-
-//               ) : (
-
-//                 <Typography>
-//                   No Chart Data
-//                 </Typography>
-
-//               )}
-
-//             </Box>
-
-//           </Card>
-
-//         </Box>
-
-
-//         {/* ================= TABLE ================= */}
-
-//         <Box mt={5}>
-
-//           <Card sx={{ p: 3, borderRadius: 4 }}>
-
-//             <Typography variant="h6">
-//               Recent Sell Invoices
-//             </Typography>
-
-
-//             <TableContainer component={Paper}>
-
-//               <Table>
-
-//                 <TableHead>
-
-//                   <TableRow>
-
-//                     <TableCell>Invoice</TableCell>
-//                     <TableCell>Date</TableCell>
-//                     <TableCell>Customer</TableCell>
-//                     <TableCell>Total</TableCell>
-//                     <TableCell>Paid</TableCell>
-//                     <TableCell>Status</TableCell>
-
-//                   </TableRow>
-
-//                 </TableHead>
-
-
-//                 <TableBody>
-
-//                   {dashboardData.recentSells.length > 0 ?
-
-//                     dashboardData.recentSells.map((row:any, i:number) => (
-
-//                       <TableRow key={i}>
-
-//                         <TableCell>
-//                           {row.invoiceNumber}
-//                         </TableCell>
-
-//                         <TableCell>
-//                           {new Date(row.invoiceDate).toLocaleDateString()}
-//                         </TableCell>
-
-//                         <TableCell>
-//                           {row.customerName}
-//                         </TableCell>
-
-//                         <TableCell>
-//                           ₹{row.grandTotal}
-//                         </TableCell>
-
-//                         <TableCell>
-//                           ₹{row.paidAmount}
-//                         </TableCell>
-
-//                         <TableCell>
-
-//                           <Chip
-//                             label={row.paymentStatus}
-//                             color={
-//                               row.paymentStatus === "paid"
-//                                 ? "success"
-//                                 : "warning"
-//                             }
-//                           />
-
-//                         </TableCell>
-
-//                       </TableRow>
-
-//                     ))
-
-//                     :
-
-//                     <TableRow>
-
-//                       <TableCell colSpan={6} align="center">
-//                         No Data
-//                       </TableCell>
-
-//                     </TableRow>
-
-//                   }
-
-//                 </TableBody>
-
-
-//               </Table>
-
-//             </TableContainer>
-
-//           </Card>
-
-//         </Box>
-
-
-//       </Box>
-
-//     </Box>
-
-//   );
-
-// };
-
-// export default Dashboard;

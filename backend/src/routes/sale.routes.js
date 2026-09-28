@@ -3,13 +3,14 @@ const express = require('express');
 const router = express.Router();
 
 const {
-    createSale,
+   
     getAllSales,
     getSaleById,
     updateSale,
     deleteSale,
     deleteAllSales,
-} = require('../controllers/sale.controller.js');
+    createVehicle,
+} = require('../controllers/vehicle.controller.js');
 
 
 // =============================
@@ -19,7 +20,7 @@ const {
 // Create + Get All
 router
     .route('/')
-    .post(createSale)
+    .post(createVehicle)
     .get(getAllSales);
 
 // Delete All  ⚠️ ye '/:id' se PEHLE hona chahiye

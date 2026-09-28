@@ -1,33 +1,44 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import {
+  Box,
+  Button,
+  Typography,
+  Grid,
+  TextField,
+  Chip,
+  IconButton,
+  InputAdornment,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import {
+  ArrowBack,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Search,
+  AssignmentReturn,
+  Receipt,
+} from "@mui/icons-material";
 
-interface ReturnableItem {
+// ===================== TYPES =====================
+
+interface Product {
+  _id: string;
+  itemName: string;
+  mrp: number;
+  rate: number;
+  unit?: string;
+}
+
+interface ReturnRow {
   productId: string;
   itemName: string;
   mrp: number;
   rate: number;
-  originalQuantity: number;
-  alreadyReturned: number;
-  availableToReturn: number;
-  returnQuantity: number; // user input
-  selected: boolean; // checkbox
-}
-
-interface Customer {
-  _id: string;
-  name?: string;
-  companyName?: string;
-  mobile?: string;
-  phone?: string;
-}
-
-interface OriginalSale {
-  _id: string;
-  date: string;
-  grandTotal: number;
-  customerId: Customer;
+  quantity: number;
+  totalAmount: number;
 }
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -38,198 +49,286 @@ const getAuthHeaders = () => ({
   },
 });
 
-const SaleReturnCreate: React.FC = () => {
-  const navigate = useNavigate();
-  const { saleId } = useParams<{ saleId: string }>();
+// ===================== STYLED COMPONENTS =====================
 
-  const [sale, setSale] = useState<OriginalSale | null>(null);
-  const [items, setItems] = useState<ReturnableItem[]>([]);
-  const [returnType, setReturnType] = useState<"Full Cancel" | "Partial Return">(
-    "Partial Return"
-  );
-  const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(true);
+const DarkBanner = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "20px 24px",
+  marginBottom: "16px",
+  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+}));
+
+const FormCard = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "20px",
+  marginBottom: "16px",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+}));
+
+const StyledTextField = styled(TextField)(() => ({
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "10px",
+    backgroundColor: "#090d16",
+    color: "#ffffff",
+    height: "42px",
+    "& fieldset": {
+      borderColor: "rgba(255, 255, 255, 0.1)",
+    },
+    "&:hover fieldset": {
+      borderColor: "rgba(56, 189, 248, 0.4)",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "#38bdf8",
+      borderWidth: "1.5px",
+    },
+  },
+  "& .MuiOutlinedInput-input": {
+    color: "#ffffff",
+    fontSize: "0.85rem",
+    fontWeight: 500,
+    padding: "10px 12px",
+    "&::placeholder": {
+      color: "#6b7280",
+      opacity: 1,
+    },
+    "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
+      WebkitAppearance: "none",
+      margin: 0,
+    },
+    "&[type=number]": {
+      MozAppearance: "textfield",
+    },
+  },
+}));
+
+const FieldLabel = styled(Typography)(() => ({
+  color: "#9ca3af",
+  fontWeight: 700,
+  fontSize: "0.7rem",
+  letterSpacing: 1,
+  textTransform: "uppercase",
+  marginBottom: "8px",
+}));
+
+const TableContainerDark = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+  overflow: "hidden",
+  marginBottom: "16px",
+}));
+
+const ItemsTable = styled("table")(() => ({
+  width: "100%",
+  borderCollapse: "collapse",
+  "& thead": {
+    backgroundColor: "#111827",
+  },
+  "& thead th": {
+    color: "#9ca3af",
+    fontWeight: 700,
+    fontSize: "0.7rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.8px",
+    padding: "16px 12px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    textAlign: "left",
+    whiteSpace: "nowrap",
+  },
+  "& tbody tr": {
+    transition: "all 0.2s ease",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+  },
+  "& tbody tr:hover": {
+    backgroundColor: "rgba(56, 189, 248, 0.03)",
+  },
+  "& tbody td": {
+    color: "#e5e7eb",
+    fontSize: "0.85rem",
+    padding: "14px 12px",
+    textAlign: "left",
+  },
+}));
+
+const TotalCard = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(56, 189, 248, 0.3)",
+  padding: "20px 28px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: "16px",
+  boxShadow: "0 8px 20px rgba(56, 189, 248, 0.1)",
+}));
+
+// ===================== MAIN COMPONENT =====================
+
+const ReturnItemsEntry: React.FC = () => {
+  const navigate = useNavigate();
+
+  // Item form
+  const [productSearch, setProductSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  const [mrp, setMrp] = useState<number | "">("");
+  const [rate, setRate] = useState<number | "">("");
+  const [qty, setQty] = useState<number | "">("");
+
+  // Rows
+  const [rows, setRows] = useState<ReturnRow[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // ============== Fetch returnable info ==============
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // ============== Outside click handler ==============
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const res = await axios.get(
-          `${API_URL}/sale-return/returnable/${saleId}`,
-          getAuthHeaders()
-        );
-
-        if (res.data?.success) {
-          setSale(res.data.data.sale);
-          const mapped: ReturnableItem[] = res.data.data.returnableItems.map(
-            (it: any) => ({
-              ...it,
-              returnQuantity: 0,
-              selected: false,
-            })
-          );
-          setItems(mapped);
-
-          if (res.data.data.isFullyReturned) {
-            toast.error("This sale is already fully returned");
-          }
-        } else {
-          toast.error(res.data?.message || "Failed to load returnable info");
-        }
-      } catch (err: any) {
-        console.error(err);
-        if (err.response?.data?.message === "Unauthorized") {
-          localStorage.removeItem("erptoken");
-          navigate("/login");
-        } else {
-          toast.error("Failed to load data");
-        }
-      } finally {
-        setLoading(false);
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSearchResults(false);
       }
     };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-    if (saleId) fetchData();
-  }, [saleId, navigate]);
-
-  // ============== Handle item select ==============
-  const toggleSelect = (index: number) => {
-    const updated = [...items];
-    updated[index].selected = !updated[index].selected;
-    if (updated[index].selected) {
-      // Prefill with max available for full cancel, else 1
-      if (returnType === "Full Cancel") {
-        updated[index].returnQuantity = updated[index].availableToReturn;
-      } else {
-        updated[index].returnQuantity =
-          updated[index].returnQuantity || 1;
-      }
-    } else {
-      updated[index].returnQuantity = 0;
-    }
-    setItems(updated);
-  };
-
-  // ============== Handle qty change ==============
-  const handleQtyChange = (index: number, value: number) => {
-    const updated = [...items];
-    const max = updated[index].availableToReturn;
-
-    if (value < 0) value = 0;
-    if (value > max) value = max;
-
-    updated[index].returnQuantity = value;
-    updated[index].selected = value > 0;
-    setItems(updated);
-  };
-
-  // ============== Handle return type change ==============
-  const handleReturnTypeChange = (type: "Full Cancel" | "Partial Return") => {
-    setReturnType(type);
-
-    const updated = items.map((it) => {
-      if (type === "Full Cancel") {
-        return {
-          ...it,
-          selected: it.availableToReturn > 0,
-          returnQuantity: it.availableToReturn,
-        };
-      }
-      return {
-        ...it,
-        selected: false,
-        returnQuantity: 0,
-      };
-    });
-    setItems(updated);
-  };
-
-  // ============== Select All / Deselect All ==============
-  const handleSelectAll = (select: boolean) => {
-    const updated = items.map((it) => ({
-      ...it,
-      selected: select && it.availableToReturn > 0,
-      returnQuantity: select
-        ? returnType === "Full Cancel"
-          ? it.availableToReturn
-          : it.availableToReturn > 0
-          ? 1
-          : 0
-        : 0,
-    }));
-    setItems(updated);
-  };
-
-  // ============== Computed ==============
-  const selectedItems = items.filter((it) => it.selected && it.returnQuantity > 0);
-  const returnTotal = selectedItems.reduce(
-    (s, it) => s + it.returnQuantity * it.rate,
-    0
-  );
-
-  const grandTotal = sale?.grandTotal || 0;
-
-  const isFullyCancelling =
-    items.length > 0 &&
-    items.every(
-      (it) => it.availableToReturn <= 0 || it.returnQuantity >= it.availableToReturn
-    ) &&
-    selectedItems.length === items.filter((it) => it.availableToReturn > 0).length;
-
-  // ============== Save ==============
-  const handleSave = async () => {
-    if (!sale) return;
-
-    if (selectedItems.length === 0) {
-      toast.error("Please select at least one item to return");
+  // ============== Search products ==============
+  useEffect(() => {
+    if (!productSearch.trim() || productSearch.length < 1) {
+      setSearchResults([]);
+      setShowSearchResults(false);
       return;
     }
 
-    // Validate: har selected item ki returnQuantity > 0
-    for (const it of selectedItems) {
-      if (it.returnQuantity <= 0) {
-        toast.error(`Please enter quantity for ${it.itemName}`);
-        return;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await axios.get(`${API_URL}/product`, {
+          params: { search: productSearch, page: 1, limit: 20 },
+          ...getAuthHeaders(),
+        });
+
+        if (res.data?.success) {
+          setSearchResults(res.data.data || []);
+          setShowSearchResults(true);
+        }
+      } catch (err) {
+        console.error(err);
       }
-      if (it.returnQuantity > it.availableToReturn) {
-        toast.error(
-          `Return qty for ${it.itemName} cannot exceed ${it.availableToReturn}`
-        );
-        return;
-      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [productSearch]);
+
+  // ============== Select product ==============
+  const handleSelectProduct = (p: Product) => {
+    setSelectedProduct(p);
+    setProductSearch(p.itemName);
+    setMrp(p.mrp || "");
+    setRate(p.rate || "");
+    setShowSearchResults(false);
+  };
+
+  // ============== Live return amount ==============
+  const currentReturnAmount = (Number(rate) || 0) * (Number(qty) || 0);
+
+  // ============== Add Return Item ==============
+  const handleAddItem = () => {
+    if (!selectedProduct) {
+      toast.error("Please select an item first");
+      return;
+    }
+    if (!qty || Number(qty) <= 0) {
+      toast.error("Please enter a valid quantity");
+      return;
+    }
+    if (!rate || Number(rate) < 0) {
+      toast.error("Please enter a valid rate");
+      return;
+    }
+
+    const quantity = Number(qty);
+    const finalRate = Number(rate);
+    const finalMrp = Number(mrp) || 0;
+    const totalAmount = quantity * finalRate;
+
+    setRows([
+      ...rows,
+      {
+        productId: selectedProduct._id,
+        itemName: selectedProduct.itemName,
+        mrp: finalMrp,
+        rate: finalRate,
+        quantity,
+        totalAmount,
+      },
+    ]);
+
+    // Reset
+    setSelectedProduct(null);
+    setProductSearch("");
+    setMrp("");
+    setRate("");
+    setQty("");
+    setSearchResults([]);
+    toast.success("Item added to return list");
+  };
+
+  const removeRow = (index: number) => {
+    setRows(rows.filter((_, i) => i !== index));
+    toast.success("Item removed");
+  };
+
+  const totalReturnValue = rows.reduce((sum, r) => sum + r.totalAmount, 0);
+
+  // ============== SAVE ==============
+  const handleSave = async () => {
+    if (rows.length === 0) {
+      toast.error("Please add at least one return item");
+      return;
     }
 
     try {
       setSaving(true);
 
       const payload = {
-        saleId: sale._id,
-        returnType: isFullyCancelling ? "Full Cancel" : "Partial Return",
-        returnItems: selectedItems.map((it) => ({
-          productId: it.productId,
-          itemName: it.itemName,
-          returnQuantity: it.returnQuantity,
+        items: rows.map((r) => ({
+          productId: r.productId,
+          itemName: r.itemName,
+          mrp: r.mrp,
+          rate: r.rate,
+          quantity: r.quantity,
+          totalAmount: r.totalAmount,
         })),
-        reason: reason.trim(),
+        totalReturnValue,
+        date: new Date().toISOString().split("T")[0],
       };
 
-      const res = await axios.post(`${API_URL}/sale-return`, payload, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("erptoken") || ""}`,
-        },
-      });
+      const res = await axios.post(
+        `${API_URL}/return-items`,
+        payload,
+        getAuthHeaders()
+      );
 
-      if (res.data.success === true) {
-        toast.success(res.data.message || "Sale return created successfully! 🎉");
-        setTimeout(() => navigate("/sale/return-list"), 1200);
-      } else if (res.data.message === "Unauthorized") {
+
+      console.log('==============res=====================');
+      
+
+      if (res.data?.success === true) {
+        toast.success("Return entry saved successfully! 🎉");
+        setTimeout(() => navigate("/dashboard"), 1200);
+      } else if (res.data?.message === "Unauthorized") {
         toast.error("Session expired! Please login again");
         localStorage.removeItem("erptoken");
         setTimeout(() => navigate("/login"), 1500);
       } else {
-        toast.error(res.data?.message || "Failed to create return");
+        toast.error(res.data?.message || "Failed to save return");
       }
     } catch (error: any) {
       console.error(error);
@@ -240,347 +339,585 @@ const SaleReturnCreate: React.FC = () => {
         localStorage.removeItem("erptoken");
         setTimeout(() => navigate("/login"), 1500);
       } else {
-        toast.error(error.response?.data?.message || "Failed to create return");
+        toast.error(error.response?.data?.message || "Failed to save return");
       }
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-4 md:p-6 max-w-6xl mx-auto">
-        <div className="h-16 bg-gray-200 rounded-lg animate-pulse mb-4"></div>
-        <div className="h-64 bg-gray-200 rounded-2xl animate-pulse mb-4"></div>
-        <div className="h-96 bg-gray-200 rounded-2xl animate-pulse"></div>
-      </div>
-    );
-  }
-
-  if (!sale) {
-    return (
-      <div className="p-4 md:p-6 max-w-6xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-          <p className="text-red-700 font-medium">Sale not found</p>
-          <button
-            onClick={() => navigate("/sale/invoice-list")}
-            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg text-sm"
-          >
-            Back to Sale List
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-800 to-red-500 bg-clip-text text-transparent mb-2">
-          Sale Return
-        </h1>
-        <p className="text-sm md:text-base text-gray-600">
-          Cancel or partially return items from this sale
-        </p>
-      </div>
-
-      {/* ============== Original Sale Info ============== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
-              Customer
-            </p>
-            <p className="font-bold text-gray-800">
-              {sale.customerId?.companyName || sale.customerId?.name || "-"}
-            </p>
-            <p className="text-xs text-gray-500">
-              {sale.customerId?.phone || sale.customerId?.mobile || ""}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
-              Sale Date
-            </p>
-            <p className="font-semibold text-gray-800">
-              {new Date(sale.date).toLocaleDateString("en-IN", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">
-              Original Total
-            </p>
-            <p className="font-bold text-blue-600 text-lg">
-              ₹ {grandTotal.toLocaleString()}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ============== Return Type ============== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-          <span>🔄</span> Return Type
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => handleReturnTypeChange("Full Cancel")}
-            className={`p-4 rounded-xl border-2 text-left transition-all ${
-              returnType === "Full Cancel"
-                ? "border-red-500 bg-red-50"
-                : "border-gray-200 hover:border-red-300"
-            }`}
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "#090d16",
+        px: { xs: 1.5, sm: 2, md: 3 },
+        py: { xs: 1.5, md: 2.5 },
+        color: "#ffffff",
+      }}
+    >
+      <Box sx={{ width: "100%", maxWidth: 1400, mx: "auto" }}>
+        {/* ================= HEADER BANNER ================= */}
+        <DarkBanner>
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            flexWrap="wrap"
+            gap={2}
           >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">❌</span>
-              <div>
-                <p className="font-bold text-gray-800">Full Cancel</p>
-                <p className="text-xs text-gray-500">
-                  पूरी invoice cancel करें (सारे items पूरी qty)
-                </p>
-              </div>
-            </div>
-          </button>
+            <Box display="flex" alignItems="center" gap={2}>
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBack />}
+                onClick={() => navigate("/dashboard")}
+                sx={{
+                  color: "#e5e7eb",
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2,
+                  py: 0.9,
+                  fontSize: "0.8rem",
+                  "&:hover": {
+                    borderColor: "#38bdf8",
+                    color: "#38bdf8",
+                    bgcolor: "rgba(56, 189, 248, 0.08)",
+                  },
+                }}
+              >
+                Dashboard
+              </Button>
 
-          <button
-            type="button"
-            onClick={() => handleReturnTypeChange("Partial Return")}
-            className={`p-4 rounded-xl border-2 text-left transition-all ${
-              returnType === "Partial Return"
-                ? "border-orange-500 bg-orange-50"
-                : "border-gray-200 hover:border-orange-300"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">↩️</span>
-              <div>
-                <p className="font-bold text-gray-800">Partial Return</p>
-                <p className="text-xs text-gray-500">
-                  कुछ items की कुछ quantity वापस करें
-                </p>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
+              <Box display="flex" alignItems="center" gap={1.5}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "10px",
+                    bgcolor: "#0c2a3a",
+                    color: "#38bdf8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <AssignmentReturn />
+                </Box>
+                <Typography
+                  variant="h5"
+                  fontWeight="800"
+                  sx={{
+                    fontSize: { xs: "1rem", sm: "1.3rem", md: "1.5rem" },
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  2. RETURN ITEMS ENTRY
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </DarkBanner>
 
-      {/* ============== Items Table ============== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-5">
-        <div className="px-4 py-3 bg-slate-700 text-white flex justify-between items-center flex-wrap gap-2">
-          <h2 className="font-semibold flex items-center gap-2">
-            <span>📦</span> Select Items to Return
-          </h2>
-          <div className="flex gap-2 text-xs">
-            <button
-              onClick={() => handleSelectAll(true)}
-              className="px-3 py-1 bg-white/20 rounded-lg hover:bg-white/30"
+        {/* ================= FORM CARD ================= */}
+        <FormCard>
+          {/* Section heading */}
+          <Box display="flex" alignItems="center" gap={1} mb={2.5}>
+            <Box
+              sx={{
+                width: 30,
+                height: 30,
+                borderRadius: "8px",
+                bgcolor: "#0c2a3a",
+                color: "#38bdf8",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.9rem",
+              }}
             >
-              Select All
-            </button>
-            <button
-              onClick={() => handleSelectAll(false)}
-              className="px-3 py-1 bg-white/20 rounded-lg hover:bg-white/30"
+              📘
+            </Box>
+            <Typography
+              sx={{
+                color: "#38bdf8",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
             >
-              Clear All
-            </button>
-          </div>
-        </div>
+              Log Returned / Unsold Stock
+            </Typography>
+          </Box>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center w-12">
-                  ✓
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-left">
-                  Item Name
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center">
-                  MRP
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center">
-                  Rate
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center">
-                  Original Qty
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center">
-                  Already Returned
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center">
-                  Available
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center">
-                  Return Qty
-                </th>
-                <th className="px-3 py-3 text-xs font-bold text-gray-700 text-center">
-                  Return Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-3 py-12 text-center text-gray-500">
-                    No items in this sale
-                  </td>
-                </tr>
-              ) : (
-                items.map((item, idx) => {
-                  const isDisabled = item.availableToReturn <= 0;
-                  const returnAmount = item.returnQuantity * item.rate;
+          {/* Form Grid */}
+          <Grid container spacing={2}>
+            {/* ITEM NAME with search */}
+            <Grid
+              size={{ xs: 12, md: 3 }}
+              ref={searchRef}
+              sx={{ position: "relative" }}
+            >
+              <FieldLabel>Item Name</FieldLabel>
+              <StyledTextField
+                fullWidth
+                placeholder="Select or type item name"
+                value={productSearch}
+                onChange={(e) => {
+                  setProductSearch(e.target.value);
+                  if (selectedProduct) setSelectedProduct(null);
+                }}
+                onFocus={() => {
+                  if (searchResults.length > 0) setShowSearchResults(true);
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ color: "#6b7280", fontSize: 18 }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
 
-                  return (
-                    <tr
-                      key={idx}
-                      className={`transition-colors ${
-                        isDisabled
-                          ? "bg-gray-100 opacity-60"
-                          : item.selected
-                          ? "bg-green-50"
-                          : "hover:bg-blue-50"
-                      }`}
+              {/* Search Dropdown */}
+              {showSearchResults && searchResults.length > 0 && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    mt: 0.5,
+                    bgcolor: "#111827",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "10px",
+                    maxHeight: "280px",
+                    overflowY: "auto",
+                    zIndex: 50,
+                    boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+                  }}
+                >
+                  {searchResults.map((p) => (
+                    <Box
+                      key={p._id}
+                      onClick={() => handleSelectProduct(p)}
+                      sx={{
+                        px: 2,
+                        py: 1.2,
+                        cursor: "pointer",
+                        borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+                        "&:hover": { bgcolor: "rgba(56, 189, 248, 0.1)" },
+                        "&:last-child": { borderBottom: "none" },
+                      }}
                     >
-                      <td className="px-3 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={item.selected}
-                          disabled={isDisabled}
-                          onChange={() => toggleSelect(idx)}
-                          className="w-5 h-5 cursor-pointer accent-blue-600"
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography
+                          sx={{
+                            color: "#ffffff",
+                            fontSize: "0.85rem",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {p.itemName}
+                        </Typography>
+                        <Typography
+                          sx={{ color: "#9ca3af", fontSize: "0.75rem" }}
+                        >
+                          MRP: ₹{p.mrp}
+                        </Typography>
+                      </Box>
+                      <Typography
+                        sx={{ color: "#9ca3af", fontSize: "0.7rem", mt: 0.3 }}
+                      >
+                        Rate: ₹{p.rate}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              {showSearchResults &&
+                productSearch.trim() &&
+                searchResults.length === 0 && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      mt: 0.5,
+                      bgcolor: "#111827",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "10px",
+                      p: 2,
+                      zIndex: 50,
+                      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+                    }}
+                  >
+                    <Typography sx={{ color: "#9ca3af", fontSize: "0.8rem" }}>
+                      No items found
+                    </Typography>
+                  </Box>
+                )}
+            </Grid>
+
+            {/* MRP */}
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+              <FieldLabel>MRP (₹)</FieldLabel>
+              <StyledTextField
+                fullWidth
+                type="number"
+                placeholder="e.g. 10RS"
+                value={mrp}
+                onChange={(e) =>
+                  setMrp(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+
+            {/* RATE */}
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+              <FieldLabel>Rate (₹)</FieldLabel>
+              <StyledTextField
+                fullWidth
+                type="number"
+                placeholder="50"
+                value={rate}
+                onChange={(e) =>
+                  setRate(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+
+            {/* QTY */}
+            <Grid size={{ xs: 6, sm: 4, md: 2 }}>
+              <FieldLabel>Qty Returned</FieldLabel>
+              <StyledTextField
+                fullWidth
+                type="number"
+                placeholder="10"
+                value={qty}
+                onChange={(e) =>
+                  setQty(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+
+            {/* RETURN AMOUNT (readonly display) */}
+            <Grid size={{ xs: 6, sm: 12, md: 3 }}>
+              <FieldLabel>Return Amount</FieldLabel>
+              <Box
+                sx={{
+                  height: "42px",
+                  borderRadius: "10px",
+                  backgroundColor: "#090d16",
+                  border: "1px solid rgba(56, 189, 248, 0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  px: 2,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: currentReturnAmount > 0 ? "#38bdf8" : "#6b7280",
+                    fontWeight: 800,
+                    fontSize: "1rem",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  ₹{" "}
+                  {currentReturnAmount.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* Add Button */}
+          <Box display="flex" justifyContent="flex-end" mt={2.5}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddItem}
+              sx={{
+                bgcolor: "#3b82f6",
+                color: "#ffffff",
+                fontWeight: 800,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                borderRadius: "10px",
+                px: 3,
+                py: 1.2,
+                fontSize: "0.8rem",
+                boxShadow: "0 4px 14px rgba(59, 130, 246, 0.3)",
+                "&:hover": {
+                  bgcolor: "#2563eb",
+                  boxShadow: "0 8px 20px rgba(59, 130, 246, 0.4)",
+                },
+              }}
+            >
+              Add Return Item
+            </Button>
+          </Box>
+        </FormCard>
+
+        {/* ================= RETURNED ITEMS SHEET ================= */}
+        <TableContainerDark>
+          {/* Header */}
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            px={3}
+            py={2}
+            sx={{ borderBottom: "1px solid rgba(255, 255, 255, 0.08)" }}
+          >
+            <Typography
+              sx={{
+                color: "#ffffff",
+                fontWeight: 800,
+                fontSize: "0.95rem",
+                letterSpacing: 0.5,
+              }}
+            >
+              RETURNED ITEMS SHEET
+            </Typography>
+            <Chip
+              label={`${rows.length} Return Items`}
+              size="small"
+              sx={{
+                bgcolor: "rgba(255, 255, 255, 0.05)",
+                color: "#9ca3af",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                fontWeight: 700,
+                fontSize: "0.7rem",
+                height: "26px",
+              }}
+            />
+          </Box>
+
+          {/* Table */}
+          <Box sx={{ overflowX: "auto" }}>
+            <ItemsTable>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "center", width: "50px" }}>#</th>
+                  <th>Item Name</th>
+                  <th style={{ textAlign: "center" }}>MRP</th>
+                  <th style={{ textAlign: "center" }}>Rate (₹)</th>
+                  <th style={{ textAlign: "center" }}>Qty Returned</th>
+                  <th style={{ textAlign: "center" }}>Total Amount (₹)</th>
+                  <th style={{ textAlign: "center", width: "80px" }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      style={{ textAlign: "center", padding: "40px 12px" }}
+                    >
+                      <Receipt
+                        style={{
+                          fontSize: 40,
+                          color: "#374151",
+                          marginBottom: 8,
+                        }}
+                      />
+                      <Typography sx={{ color: "#9ca3af", fontSize: "0.9rem" }}>
+                        No return items logged yet
+                      </Typography>
+                      <Typography
+                        sx={{ color: "#6b7280", fontSize: "0.75rem", mt: 0.5 }}
+                      >
+                        Add your first return item above
+                      </Typography>
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((row, idx) => (
+                    <tr key={idx}>
+                      <td style={{ textAlign: "center", color: "#6b7280" }}>
+                        {idx + 1}
+                      </td>
+                      <td>
+                        <Typography
+                          sx={{
+                            color: "#ffffff",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          {row.itemName}
+                        </Typography>
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <Chip
+                          label={`${row.mrp}RS`}
+                          size="small"
+                          sx={{
+                            bgcolor: "rgba(156, 163, 175, 0.1)",
+                            color: "#e5e7eb",
+                            border: "1px solid rgba(156, 163, 175, 0.2)",
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                            height: "24px",
+                          }}
                         />
                       </td>
-                      <td className="px-3 py-2 text-sm font-medium text-gray-800">
-                        {item.itemName}
-                        {isDisabled && (
-                          <span className="ml-2 text-xs text-red-500">
-                            (Fully Returned)
-                          </span>
-                        )}
+                      <td style={{ textAlign: "center" }}>
+                        <Typography
+                          sx={{
+                            color: "#fbbf24",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          ₹ {row.rate.toFixed(2)}
+                        </Typography>
                       </td>
-                      <td className="px-3 py-2 text-center text-sm">
-                        ₹ {item.mrp}
+                      <td style={{ textAlign: "center" }}>
+                        <Typography
+                          sx={{
+                            color: "#38bdf8",
+                            fontWeight: 800,
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          {row.quantity}
+                        </Typography>
                       </td>
-                      <td className="px-3 py-2 text-center text-sm">
-                        ₹ {item.rate}
+                      <td style={{ textAlign: "center" }}>
+                        <Typography
+                          sx={{
+                            color: "#38bdf8",
+                            fontWeight: 800,
+                            fontSize: "0.95rem",
+                          }}
+                        >
+                          ₹{" "}
+                          {row.totalAmount.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </Typography>
                       </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="px-2 py-1 border border-gray-300 rounded-full text-xs">
-                          {item.originalQuantity}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="px-2 py-1 border border-orange-300 text-orange-700 rounded-full text-xs">
-                          {item.alreadyReturned}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="px-2 py-1 border border-blue-300 text-blue-700 rounded-full text-xs font-semibold">
-                          {item.availableToReturn}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <input
-                          type="number"
-                          value={item.returnQuantity || ""}
-                          onChange={(e) =>
-                            handleQtyChange(idx, Number(e.target.value))
-                          }
-                          disabled={isDisabled}
-                          min={0}
-                          max={item.availableToReturn}
-                          placeholder="0"
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-100"
-                        />
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="font-bold text-red-600 text-sm">
-                          ₹ {returnAmount.toLocaleString()}
-                        </span>
+                      <td style={{ textAlign: "center" }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => removeRow(idx)}
+                          sx={{
+                            color: "#f43f5e",
+                            "&:hover": {
+                              bgcolor: "rgba(244, 63, 94, 0.1)",
+                            },
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ))
+                )}
+              </tbody>
+            </ItemsTable>
+          </Box>
+        </TableContainerDark>
 
-        {/* Summary */}
-        {selectedItems.length > 0 && (
-          <div className="border-t-2 border-gray-200 bg-gradient-to-r from-red-50 to-orange-50 px-4 py-4">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-              <span className="text-sm text-gray-600">
-                {selectedItems.length} item(s) selected for return
-              </span>
-              <div className="flex items-center gap-4">
-                <span className="text-lg font-semibold text-gray-700">
-                  Return Total :
-                </span>
-                <span className="text-2xl font-bold text-red-600">
-                  ₹ {returnTotal.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        {/* ================= TOTAL RETURN VALUE ================= */}
+        <TotalCard>
+          <Typography
+            sx={{
+              color: "#ffffff",
+              fontWeight: 800,
+              fontSize: { xs: "0.95rem", sm: "1.1rem" },
+              letterSpacing: 0.5,
+            }}
+          >
+            TOTAL RETURN VALUE:
+          </Typography>
+          <Typography
+            sx={{
+              color: "#38bdf8",
+              fontWeight: 900,
+              fontSize: { xs: "1.5rem", sm: "1.9rem" },
+              letterSpacing: 0.5,
+              textShadow: "0 0 20px rgba(56, 189, 248, 0.4)",
+            }}
+          >
+            ₹{" "}
+            {totalReturnValue.toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </Typography>
+        </TotalCard>
 
-      {/* ============== Reason ============== */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Reason for Return
-        </label>
-        <textarea
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="e.g., Damaged item, Wrong item delivered, Customer changed mind..."
-          rows={3}
-          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"
-        />
-      </div>
-
-      {/* ============== Action Buttons ============== */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-end">
-        <button
-          onClick={() => navigate("/sale/invoice-list")}
-          disabled={saving}
-          className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm font-medium"
+        {/* ================= ACTIONS ================= */}
+        <Box
+          display="flex"
+          justifyContent="flex-end"
+          gap={1.5}
+          flexWrap="wrap"
         >
-          Cancel
-        </button>
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/dashboard")}
+            disabled={saving}
+            sx={{
+              color: "#9ca3af",
+              borderColor: "rgba(156, 163, 175, 0.3)",
+              fontWeight: 700,
+              textTransform: "none",
+              borderRadius: "10px",
+              px: 3,
+              py: 1.2,
+              "&:hover": {
+                borderColor: "#9ca3af",
+                bgcolor: "rgba(156, 163, 175, 0.08)",
+              },
+            }}
+          >
+            Cancel
+          </Button>
 
-        <button
-          onClick={handleSave}
-          disabled={saving || selectedItems.length === 0}
-          className={`px-6 py-2.5 text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium ${
-            isFullyCancelling
-              ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
-              : "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
-          }`}
-        >
-          {saving ? (
-            <>
-              <span className="animate-spin">⏳</span> Saving...
-            </>
-          ) : (
-            <>
-              <span>{isFullyCancelling ? "❌" : "↩️"}</span>
-              {isFullyCancelling ? "Full Cancel Invoice" : "Confirm Partial Return"}
-            </>
-          )}
-        </button>
-      </div>
-    </div>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || rows.length === 0}
+            sx={{
+              bgcolor: "#3b82f6",
+              color: "#ffffff",
+              fontWeight: 800,
+              textTransform: "none",
+              borderRadius: "10px",
+              px: 3,
+              py: 1.2,
+              boxShadow: "0 4px 14px rgba(59, 130, 246, 0.3)",
+              "&:hover": {
+                bgcolor: "#2563eb",
+                boxShadow: "0 8px 20px rgba(59, 130, 246, 0.4)",
+              },
+              "&.Mui-disabled": {
+                bgcolor: "rgba(59, 130, 246, 0.3)",
+                color: "rgba(255, 255, 255, 0.5)",
+              },
+            }}
+          >
+            {saving ? "Saving..." : "Save Return Entry"}
+          </Button>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 
-export default SaleReturnCreate;
+export default ReturnItemsEntry;

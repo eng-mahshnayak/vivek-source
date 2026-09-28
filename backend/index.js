@@ -6,13 +6,15 @@ const cors = require('cors');
 const userRoutes = require('./src/routes/user.routes.js')
 const customerRoutes = require('./src/routes/customer.routes.js')
 
-const inventoryStockRoutes= require('./src/routes/inventorystock.routes.js')
+
 const saleRoutes = require('./src/routes/sale.routes.js');
 const productRoutes = require('./src/routes/product.routes.js');
 const dailyCashRoutes = require('./src/routes/dailyCash.routes.js')
-const saleReturnRoutes = require('./src/routes/saleReturn.routes.js');
+const saleReturnRoutes = require('./src/routes/itemsReturn.routes.js');
+const creditCustomerRoutes = require("./src/routes/creditCustomer.route.js");
  require('./src/script/user.script.js')
-
+const paymentReceivedRoutes = require("./src/routes/paymentReceived.route.js");
+const expenseRoutes = require("./src/routes/expense.route.js");
 
 
 require('dotenv').config(); 
@@ -64,13 +66,14 @@ app.get('/', (req, res) => {
 // API routes yahan define karein
 app.use('/api/users', userRoutes);
 app.use('/api/customer', customerRoutes);
-app.use('/api/category', inventoryStockRoutes);
 app.use('/api/product', productRoutes);
 app.use('/api/dailycash', dailyCashRoutes);
 app.use('/api/sale', saleRoutes);
-app.use('/api/sale-return', saleReturnRoutes);
+app.use('/api/return-items', saleReturnRoutes);
+app.use("/api/payment-received", paymentReceivedRoutes);
+app.use("/api/credit-customer", creditCustomerRoutes);
 
-
+app.use("/api/expense", expenseRoutes);
 
 
 // Server configuration
