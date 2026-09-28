@@ -1,264 +1,456 @@
-
-
-
-
 import { useState } from "react";
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-const API_URL = import.meta.env.VITE_API_URL;
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import toast from "react-hot-toast";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function Login() {
+  const navigate = useNavigate();
 
-    const navigate = useNavigate();
+  const [email, setEmail] = useState("admin@example.com");
+  const [password, setPassword] = useState("admin@199797");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-    const [email, setEmail] = useState("admin@example.com");
-    const [password, setPassword] = useState("admin@199797");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+  console.log(error);
 
-    console.log(error);
-    
-    const [showPassword, setShowPassword] = useState(false);
-    const [rememberMe, setRememberMe] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
-    const handleLogin = async (e:any) => {
-        e.preventDefault();   // important (page reload stop karega)
-        
+  const handleLogin = async (e: any) => {
+    e.preventDefault();
 
-         // Dismiss any existing toasts before showing new ones
     toast.dismiss();
 
-        // Validation
-        if (!email || !password) {
-            toast.error("Please fill in all fields");
-            return;
-        }
-        
-        setLoading(true);
-        setError("");
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
 
-        try {
-            const response = await axios.post(
-                `${API_URL}/users/signin`,
-                { email, password },
-            );
+    setLoading(true);
+    setError("");
 
-            console.log(response,'response login');
-            
+    try {
+      const response = await axios.post(`${API_URL}/users/signin`, {
+        email,
+        password,
+      });
 
-            if (response.data?.success === true) {
-                console.log(response.data.user);
-                
-                // token store
-                localStorage.setItem("erptoken", response.data.data);
+      console.log(response, "response login");
 
-                // user object store
-                localStorage.setItem("erpuser", JSON.stringify(response.data.user));
+      if (response.data?.success === true) {
+        console.log(response.data.user);
 
-                toast.success("Login successful");
+        localStorage.setItem("erptoken", response.data.data);
+        localStorage.setItem("erpuser", JSON.stringify(response.data.user));
 
-                // dashboard pe bhejo
-                navigate("/dashboard");
-                
-            } else if (response.data?.success === false && response.data?.message === 'Unauthorized') {
-                localStorage.removeItem('token');
-                navigate('/login');
-            } else {
-                toast.error(response.data?.message || 'Failed to login');
-                throw new Error(response.data?.message || 'Failed to login');
-            }
+        toast.success("Login successful");
+        navigate("/dashboard");
+      } else if (
+        response.data?.success === false &&
+        response.data?.message === "Unauthorized"
+      ) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        toast.error(response.data?.message || "Failed to login");
+        throw new Error(response.data?.message || "Failed to login");
+      }
+    } catch (err: any) {
+      console.log(err, "err login");
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        } catch (err: any) {
-             console.log(err,'err login');
-            // toast.error(err.message || "Invalid credentials ❌");
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ backgroundColor: "#090d16" }}
+    >
+      {/* Main card */}
+      <div
+        className="w-full max-w-5xl flex flex-col lg:flex-row rounded-2xl overflow-hidden transform transition-all duration-300"
+        style={{
+          backgroundColor: "#0d1527",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.6)",
+        }}
+      >
+        {/* LEFT SIDE - Branding & Testimonial */}
+        <div
+          className="lg:w-1/2 p-8 md:p-12 flex flex-col justify-between relative overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(135deg, #0f1729 0%, #0d1527 50%, #111827 100%)",
+            borderRight: "1px solid rgba(255, 255, 255, 0.05)",
+          }}
+        >
+          {/* Decorative gradient blob */}
+          <div
+            className="absolute -top-20 -right-20 w-72 h-72 rounded-full opacity-20 blur-3xl pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle, #10b981 0%, #38bdf8 50%, transparent 70%)",
+            }}
+          />
+          <div
+            className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full opacity-10 blur-3xl pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle, #c084fc 0%, #a78bfa 50%, transparent 70%)",
+            }}
+          />
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-            {/* Main card */}
-            <div className="w-full max-w-5xl flex flex-col lg:flex-row rounded-2xl shadow-2xl overflow-hidden bg-white transform transition-all duration-300 hover:shadow-3xl">
-                {/* LEFT SIDE - Gradient with branding and testimonial */}
-                <div className="lg:w-1/2 bg-gradient-to-br from-indigo-700 to-purple-800 text-white p-8 md:p-12 flex flex-col justify-between">
-                    <div>
-                        <h1 className="text-4xl font-bold mb-2 transition-transform duration-300 hover:scale-105 hover:origin-left">
-                            Accu<span className="text-yellow-300">ERP</span>
-                        </h1>
-                        <p className="text-lg opacity-90 max-w-sm transition-opacity duration-300 hover:opacity-100">
-                            Enterprise Resource Planning for Accounting, Inventory & Growth.
-                        </p>
-                    </div>
-
-                    {/* Testimonial */}
-                    <div className="mt-12 lg:mt-0">
-                        <div className="flex items-center gap-4 p-4 rounded-lg transition-all duration-300 hover:bg-white/10 cursor-default">
-                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl font-semibold transition-transform duration-300 hover:scale-110 hover:bg-white/30">
-                                MN
-                            </div>
-                            <div>
-                                <p className="font-semibold text-lg">Mahesh Nayak</p>
-                                <p className="text-sm text-white/80">Full Stack Developer</p>
-                            </div>
-                        </div>
-                        <p className="text-sm text-white/70 mt-4 italic p-3 rounded-lg transition-all duration-300 hover:bg-white/5">
-                            "AccuERP streamlined our entire financial workflow."
-                        </p>
-                    </div>
-                </div>
-
-                {/* RIGHT SIDE - Login Form */}
-                <div className="lg:w-1/2 p-8 md:p-12 bg-white">
-                    {/* Header with "Login M" */}
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-3xl font-bold text-gray-800 transition-all duration-300 hover:text-indigo-700 hover:scale-105">
-                            Login
-                        </h2>
-                        <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full transition-all duration-300 hover:bg-indigo-100 hover:scale-110 hover:shadow-md cursor-default">
-                            M
-                        </span>
-                    </div>
-
-                    <form className="space-y-6" onSubmit={handleLogin}>
-                        {/* Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1 transition-colors duration-200 hover:text-indigo-600">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="your@company.com"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg transition-all duration-200 
-                                hover:border-indigo-400 hover:ring-2 hover:ring-indigo-100 
-                                focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
-                            />
-                        </div>
-
-                        {/* Password with eye icon toggle */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1 transition-colors duration-200 hover:text-indigo-600">
-                                Password
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg pr-12 transition-all duration-200 
-                                    hover:border-indigo-400 hover:ring-2 hover:ring-indigo-100 
-                                    focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 
-                                    hover:text-indigo-600 focus:outline-none transition-all duration-200 
-                                    hover:scale-110 active:scale-95"
-                                >
-                                    {showPassword ? (
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            strokeWidth={1.5}
-                                            stroke="currentColor"
-                                            className="w-5 h-5"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                                            />
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                            />
-                                        </svg>
-                                    ) : (
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            strokeWidth={1.5}
-                                            stroke="currentColor"
-                                            className="w-5 h-5"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"
-                                            />
-                                        </svg>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Remember me & Forgot password */}
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    checked={rememberMe}
-                                   
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 
-                                    transition-all duration-200 cursor-pointer hover:border-indigo-400 hover:scale-110"
-                                />
-                                <span className="text-sm text-gray-600 transition-colors duration-200 group-hover:text-indigo-600">
-                                    Remember me
-                                </span>
-                            </label>
-                            <a
-                                href="/forgot-password"
-                                className="text-sm text-indigo-600 hover:underline font-medium 
-                                transition-all duration-200 hover:text-indigo-800 hover:scale-105 inline-block"
-                            >
-                                Forgot password?
-                            </a>
-                        </div>
-
-                        {/* Sign In Button */}
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg 
-                            transition-all duration-200 hover:bg-indigo-800 hover:shadow-lg hover:scale-[1.02] 
-                            active:scale-[0.98] active:bg-indigo-900 focus:ring-4 focus:ring-indigo-300 
-                            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                        >
-                            {loading ? (
-                                <span className="flex items-center justify-center gap-2">
-                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Signing In...
-                                </span>
-                            ) : "Sign In"}
-                        </button>
-                    </form>
-
-                    {/* Request Access link */}
-                    <p className="text-center text-sm text-gray-500 mt-8">
-                        Don't have an account?{" "}
-                        <a 
-                            href="/signup" 
-                            className="text-indigo-600 hover:underline font-medium 
-                            transition-all duration-200 hover:text-indigo-800 hover:scale-105 inline-block"
-                        >
-                            Sign Up
-                        </a>
-                    </p>
-                </div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span
+                className="inline-block w-2 h-2 rounded-full"
+                style={{
+                  backgroundColor: "#10b981",
+                  boxShadow: "0 0 12px rgba(16, 185, 129, 0.8)",
+                }}
+              />
+              <span
+                className="text-xs font-bold tracking-wider uppercase"
+                style={{ color: "#10b981" }}
+              >
+                LogiTrack ERP
+              </span>
             </div>
+
+            <h1
+              className="text-4xl font-bold mb-2 transition-transform duration-300 hover:scale-105 hover:origin-left"
+              style={{ color: "#ffffff" }}
+            >
+              Logi
+              <span
+                style={{
+                  color: "#34d399",
+                  textShadow: "0 0 20px rgba(52, 211, 153, 0.4)",
+                }}
+              >
+                Track
+              </span>
+              <span style={{ color: "#9ca3af" }}> ERP</span>
+            </h1>
+
+            <p
+              className="text-sm md:text-base max-w-sm transition-opacity duration-300 hover:opacity-100"
+              style={{ color: "#9ca3af" }}
+            >
+              Vehicle Loading & Settlement System — Inventory, Returns,
+              Credits, Payments & Cash Reconciliation.
+            </p>
+
+            {/* Feature chips */}
+            <div className="flex flex-wrap gap-2 mt-6">
+              {["Loading", "Returns", "Credit", "Payments", "Cash"].map(
+                (tag, idx) => {
+                  const colors = [
+                    "#34d399",
+                    "#38bdf8",
+                    "#fbbf24",
+                    "#a78bfa",
+                    "#c084fc",
+                  ];
+                  const bgColors = [
+                    "#132e29",
+                    "#0c2a3a",
+                    "#332208",
+                    "#1e1b4b",
+                    "#2e1065",
+                  ];
+                  return (
+                    <span
+                      key={tag}
+                      className="text-xs font-semibold px-3 py-1 rounded-lg transition-transform duration-200 hover:scale-105"
+                      style={{
+                        backgroundColor: bgColors[idx],
+                        color: colors[idx],
+                        border: `1px solid ${colors[idx]}40`,
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  );
+                }
+              )}
+            </div>
+          </div>
+
+          {/* Testimonial */}
+          <div className="mt-12 lg:mt-0 relative z-10">
+            <div
+              className="flex items-center gap-4 p-4 rounded-lg transition-all duration-300"
+              style={{ backgroundColor: "rgba(255, 255, 255, 0.03)" }}
+            >
+              <div
+                className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold transition-transform duration-300 hover:scale-110"
+                style={{
+                  backgroundColor: "rgba(52, 211, 153, 0.15)",
+                  color: "#34d399",
+                  border: "1px solid rgba(52, 211, 153, 0.3)",
+                }}
+              >
+                MN
+              </div>
+              <div>
+                <p className="font-semibold text-base" style={{ color: "#ffffff" }}>
+                  Mahesh Nayak
+                </p>
+                <p className="text-xs" style={{ color: "#9ca3af" }}>
+                  Full Stack Developer
+                </p>
+              </div>
+            </div>
+            <p
+              className="text-xs mt-3 italic p-3 rounded-lg transition-all duration-300"
+              style={{
+                color: "#6b7280",
+                backgroundColor: "rgba(255, 255, 255, 0.02)",
+              }}
+            >
+              "LogiTrack streamlines our entire vehicle loading & settlement
+              workflow."
+            </p>
+          </div>
         </div>
-    );
+
+        {/* RIGHT SIDE - Login Form */}
+        <div
+          className="lg:w-1/2 p-8 md:p-12"
+          style={{ backgroundColor: "#0d1527" }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <h2
+              className="text-3xl font-bold transition-all duration-300"
+              style={{ color: "#ffffff" }}
+            >
+              Sign In
+            </h2>
+            <span
+              className="text-xs font-bold px-3 py-1 rounded-full transition-all duration-300"
+              style={{
+                color: "#10b981",
+                backgroundColor: "rgba(16, 185, 129, 0.1)",
+                border: "1px solid rgba(16, 185, 129, 0.3)",
+              }}
+            >
+              SECURE
+            </span>
+          </div>
+
+          <form className="space-y-6" onSubmit={handleLogin}>
+            {/* Email */}
+            <div>
+              <label
+                className="block text-xs font-bold mb-2 uppercase tracking-wider transition-colors duration-200"
+                style={{ color: "#9ca3af" }}
+              >
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@company.com"
+                className="w-full px-4 py-3 rounded-lg transition-all duration-200 outline-none"
+                style={{
+                  backgroundColor: "#090d16",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  color: "#ffffff",
+                  fontSize: "0.9rem",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "#10b981";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 0 3px rgba(16, 185, 129, 0.15)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor =
+                    "rgba(255, 255, 255, 0.1)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label
+                className="block text-xs font-bold mb-2 uppercase tracking-wider transition-colors duration-200"
+                style={{ color: "#9ca3af" }}
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 pr-12 rounded-lg transition-all duration-200 outline-none"
+                  style={{
+                    backgroundColor: "#090d16",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    color: "#ffffff",
+                    fontSize: "0.9rem",
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#10b981";
+                    e.currentTarget.style.boxShadow =
+                      "0 0 0 3px rgba(16, 185, 129, 0.15)";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor =
+                      "rgba(255, 255, 255, 0.1)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
+                  style={{ color: "#6b7280" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#10b981";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "#6b7280";
+                  }}
+                >
+                  {showPassword ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Remember me */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded cursor-pointer transition-all duration-200 hover:scale-110"
+                  style={{
+                    accentColor: "#10b981",
+                    backgroundColor: "#090d16",
+                    borderColor: "rgba(255, 255, 255, 0.2)",
+                  }}
+                />
+                <span
+                  className="text-sm transition-colors duration-200"
+                  style={{ color: "#9ca3af" }}
+                >
+                  Remember me
+                </span>
+              </label>
+            </div>
+
+            {/* Sign In Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full font-bold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: "#10b981",
+                color: "#ffffff",
+                fontSize: "0.9rem",
+                letterSpacing: "0.3px",
+                boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.backgroundColor = "#059669";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 20px rgba(16, 185, 129, 0.4)";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#10b981";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 14px rgba(16, 185, 129, 0.3)";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    className="animate-spin h-5 w-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Signing In...
+                </span>
+              ) : (
+                "Sign In"
+              )}
+            </button>
+          </form>
+
+          {/* Footer note */}
+          <p
+            className="text-center text-xs mt-8"
+            style={{ color: "#6b7280" }}
+          >
+            LogiTrack ERP Vehicle Inventory & Settlement System © 2026
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
