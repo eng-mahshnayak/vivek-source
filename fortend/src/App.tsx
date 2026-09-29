@@ -40,12 +40,14 @@ import SaleReturnCreate from "./pages/SaleReturn/SaleReturnCreate";
 import SaleReturnList from "./pages/SaleReturn/SaleReturnList";
 import ExpenseEntry from "./pages/ExpenseEntry";
 import PaymentReceivedEntry from "./pages/PaymentReceivedEntry";
-import CustomerManagement from "./pages/parties/CustomerManagement";
-import CustomerCreate from "./pages/parties/CustomerCreate";
-import CustomerUpdate from "./pages/parties/CustomerUpdate";
-import AddProduct from "./pages/product/AddProduct";
-import ProductTable from "./pages/product/ProductTable";
-import UpdateProduct from "./pages/product/UpdateProduct";
+import CustomerManagement from "./pages/CustomerManagement";
+
+
+import ProductTable from "./pages/ProductTable";
+import CustomerLedger from "./pages/CustomerLedger";
+import CustomerLedgerDetail from "./pages/CustomerLedgerDetail";
+
+
 
 function App() {
   return (
@@ -78,6 +80,9 @@ function App() {
 <Route path="/sale/return-list" element={<SaleReturnList />} />
 
             
+<Route path="/customer-ledger" element={<CustomerLedger />} />
+
+<Route path="/customer-ledger/:customerId" element={<CustomerLedgerDetail />} />
 
 
         
@@ -88,11 +93,11 @@ function App() {
 
             {/* Daily Cash Routes */}
             <Route 
-              path="dailycash/create" 
-              element={<DailyCashSummaryForm refresh={() => {}} />} 
+              path="note-summary-entry/create" 
+              element={<DailyCashSummaryForm />} 
             />
             <Route path="note-summary-entry" element={<DailyCashSummery />} />
-            <Route path="dailycash/edit/:id" element={<DailyCashSummeryFromUpdate />} />
+            <Route path="note-summary-entry/edit/:id" element={<DailyCashSummeryFromUpdate />} />
 
             
           
@@ -119,12 +124,10 @@ function App() {
 <Route path="/payment-received-entry" element={<PaymentReceivedEntry />} />
 
 <Route path="/customer-entry" element={<CustomerManagement />} />
-<Route path="/customers/create" element={<CustomerCreate />} />
-<Route path="/customers/edit/:id" element={<CustomerUpdate />} />
+
 
 <Route path="/products" element={<ProductTable />} />
-<Route path="/products/add" element={<AddProduct />} />
-<Route path="/products/edit/:id" element={<UpdateProduct />} />
+
 
 
 

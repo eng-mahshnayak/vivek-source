@@ -1,3 +1,7 @@
+
+
+
+
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +10,7 @@ import {
   Box,
   Button,
   Typography,
-  Grid,
+
   Chip,
   IconButton,
   TextField,
@@ -15,15 +19,10 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   CircularProgress,
+  Pagination,
+  Tooltip,
+  Fab,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -33,12 +32,11 @@ import {
   Edit as EditIcon,
   Visibility as ViewIcon,
   FiberManualRecord,
-  FirstPage,
-  LastPage,
-  ChevronLeft,
-  ChevronRight,
   Receipt,
   ShoppingCart,
+  ArrowBack,
+  Home as HomeIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 
 // ===================== TYPES =====================
@@ -55,8 +53,8 @@ interface SaleItem {
 interface Sale {
   _id: string;
   items: SaleItem[];
-  totalValue?: number;   // API uses totalValue
-  grandTotal?: number;   // legacy fallback
+  totalValue?: number;
+  grandTotal?: number;
   date: string;
   createdAt: string;
   updatedAt: string;
@@ -79,50 +77,17 @@ const DarkBanner = styled(Box)(() => ({
   padding: "20px 24px",
   marginBottom: "16px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+  flexShrink: 0,
 }));
 
-const FilterCard = styled(Box)(() => ({
+const FilterBar = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
   border: "1px solid rgba(255, 255, 255, 0.08)",
-  padding: "20px",
+  padding: "14px 20px",
   marginBottom: "16px",
   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
-}));
-
-const TableContainerDark = styled(TableContainer)(() => ({
-  backgroundColor: "#0d1527",
-  borderRadius: "16px",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
-  overflow: "hidden",
-}));
-
-const StyledTableHead = styled(TableHead)(() => ({
-  "& .MuiTableCell-head": {
-    backgroundColor: "#111827",
-    color: "#9ca3af",
-    fontWeight: 700,
-    fontSize: "0.7rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.8px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-    padding: "16px 12px",
-    whiteSpace: "nowrap",
-  },
-}));
-
-const StyledTableRow = styled(TableRow)(() => ({
-  transition: "all 0.2s ease",
-  "&:hover": {
-    backgroundColor: "rgba(56, 189, 248, 0.05)",
-  },
-  "& .MuiTableCell-body": {
-    borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-    color: "#e5e7eb",
-    fontSize: "0.85rem",
-    padding: "14px 12px",
-  },
+  flexShrink: 0,
 }));
 
 const StyledTextField = styled(TextField)(() => ({
@@ -149,44 +114,71 @@ const StyledTextField = styled(TextField)(() => ({
   },
 }));
 
-const TotalChip = styled(Box)(() => ({
-  backgroundColor: "rgba(56, 189, 248, 0.1)",
-  border: "1px solid rgba(56, 189, 248, 0.3)",
-  color: "#38bdf8",
-  borderRadius: "10px",
-  padding: "10px 20px",
-  fontWeight: 700,
-  fontSize: "0.85rem",
+const TableContainerDark = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
+  overflow: "hidden",
+  marginBottom: "16px",
   display: "flex",
-  alignItems: "center",
-  gap: "8px",
+  flexDirection: "column",
+  flex: 1,
+  minHeight: 0,
 }));
 
-const PaginationButton = styled(IconButton)(() => ({
-  width: "38px",
-  height: "38px",
-  borderRadius: "10px",
-  color: "#9ca3af",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  "&:hover": {
-    bgcolor: "rgba(56, 189, 248, 0.1)",
-    borderColor: "#38bdf8",
-    color: "#38bdf8",
+const TableScrollArea = styled(Box)(() => ({
+  overflow: "auto",
+  flex: 1,
+  minHeight: 0,
+  "&::-webkit-scrollbar": { width: "8px", height: "8px" },
+  "&::-webkit-scrollbar-track": { backgroundColor: "#0d1527" },
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor: "rgba(56, 189, 248, 0.3)",
+    borderRadius: "8px",
+    "&:hover": { backgroundColor: "rgba(56, 189, 248, 0.5)" },
   },
-  "&.Mui-disabled": {
-    color: "rgba(156, 163, 175, 0.3)",
-    borderColor: "rgba(255, 255, 255, 0.05)",
+}));
+
+const ItemsTable = styled("table")(() => ({
+  width: "100%",
+  borderCollapse: "collapse",
+  "& thead": {
+    backgroundColor: "#111827",
+    position: "sticky",
+    top: 0,
+    zIndex: 5,
+  },
+  "& thead th": {
+    color: "#9ca3af",
+    fontWeight: 700,
+    fontSize: "0.7rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.8px",
+    padding: "16px 12px",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    textAlign: "left",
+    whiteSpace: "nowrap",
+    backgroundColor: "#111827",
+  },
+  "& tbody tr": {
+    transition: "all 0.2s ease",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+  },
+  "& tbody tr:hover": { backgroundColor: "rgba(56, 189, 248, 0.05)" },
+  "& tbody td": {
+    color: "#e5e7eb",
+    fontSize: "0.85rem",
+    padding: "14px 12px",
+    textAlign: "left",
   },
 }));
 
 // ===================== HELPERS =====================
 
-// Safely read the total from any possible field name
 const getSaleTotal = (sale: Sale): number => {
   if (typeof sale?.grandTotal === "number") return sale.grandTotal;
   if (typeof sale?.totalValue === "number") return sale.totalValue;
-
-  // Fallback: compute from items
   if (Array.isArray(sale?.items)) {
     return sale.items.reduce(
       (sum, it) => sum + (Number(it?.quantity) || 0) * (Number(it?.rate) || 0),
@@ -196,10 +188,17 @@ const getSaleTotal = (sale: Sale): number => {
   return 0;
 };
 
-// Safely compute line total for an item
 const getItemTotal = (item: SaleItem): number => {
   if (typeof item?.totalAmount === "number") return item.totalAmount;
   return (Number(item?.quantity) || 0) * (Number(item?.rate) || 0);
+};
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("en-IN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 };
 
 // ===================== MAIN COMPONENT =====================
@@ -214,19 +213,16 @@ const SaleList: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  console.log(error);
-  
 
   // Filters
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [appliedFrom, setAppliedFrom] = useState("");
+  const [appliedTo, setAppliedTo] = useState("");
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [rowsPerPageOptions] = useState([25, 50, 100, 200]);
+  const [limit, setLimit] = useState(10);
   const [totalEntries, setTotalEntries] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -234,11 +230,10 @@ const SaleList: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      setError(null);
 
-      const params: any = { page, limit: rowsPerPage };
-      if (fromDate) params.from = fromDate;
-      if (toDate) params.to = toDate;
+      const params: any = { page, limit };
+      if (appliedFrom) params.from = appliedFrom;
+      if (appliedTo) params.to = appliedTo;
 
       const res = await axios.get(`${API_URL}/sale`, {
         params,
@@ -247,13 +242,20 @@ const SaleList: React.FC = () => {
 
       if (res.data?.success === true) {
         setData(res.data.data || []);
-        setTotalEntries(res.data.total || 0);
-        setTotalPages(res.data.pages || 1);
+        const count =
+          res.data.totalCount ?? res.data.total ?? res.data.count ?? 0;
+        const pages =
+          res.data.totalPages ??
+          res.data.pages ??
+          Math.max(1, Math.ceil((count || 0) / limit));
+        setTotalEntries(count);
+        setTotalPages(pages);
       } else if (
         res.data?.success === false &&
         res.data?.message === "Unauthorized"
       ) {
         toast.error("Please login again");
+        localStorage.removeItem("erptoken");
         navigate("/login");
       } else {
         toast.error(res?.data?.message || "Failed to fetch sales");
@@ -264,7 +266,7 @@ const SaleList: React.FC = () => {
         localStorage.removeItem("erptoken");
         navigate("/login");
       } else {
-        setError(error.response?.data?.message || "Failed to fetch data");
+        toast.error(error.response?.data?.message || "Failed to fetch data");
       }
       setData([]);
     } finally {
@@ -275,7 +277,28 @@ const SaleList: React.FC = () => {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, rowsPerPage, fromDate, toDate]);
+  }, [page, limit, appliedFrom, appliedTo]);
+
+  // ===================== DATE FILTER =====================
+  const handleApplyDateFilter = () => {
+    if (fromDate && toDate && fromDate > toDate) {
+      toast.error("From date cannot be after To date");
+      return;
+    }
+    setAppliedFrom(fromDate);
+    setAppliedTo(toDate);
+    setPage(1);
+  };
+
+  const handleClearDateFilter = () => {
+    setFromDate("");
+    setToDate("");
+    setAppliedFrom("");
+    setAppliedTo("");
+    setPage(1);
+  };
+
+  const hasDateFilter = !!(appliedFrom || appliedTo);
 
   // ===================== DELETE ONE =====================
   const handleDelete = async (id: string) => {
@@ -285,8 +308,12 @@ const SaleList: React.FC = () => {
 
       if (res.data?.success === true) {
         toast.success("Sale deleted successfully");
-        await fetchData();
         setDeleteDialogOpen(false);
+        if (data.length === 1 && page > 1) {
+          setPage((p) => p - 1);
+        } else {
+          await fetchData();
+        }
       } else {
         toast.error(res.data?.message || "Failed to delete");
       }
@@ -313,8 +340,9 @@ const SaleList: React.FC = () => {
 
       if (res.data?.success === true) {
         toast.success("All sales deleted");
-        await fetchData();
         setDeleteAllDialogOpen(false);
+        setPage(1);
+        await fetchData();
       } else {
         toast.error(res.data?.message || "Failed to delete all");
       }
@@ -325,54 +353,36 @@ const SaleList: React.FC = () => {
     }
   };
 
-  // ===================== PAGINATION =====================
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  // Current page total
+  const pageTotal = data.reduce((s, r) => s + getSaleTotal(r), 0);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-IN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  // Sum of all totals on current page (safe)
-  const grandTotalSum = data.reduce((s, r) => s + getSaleTotal(r), 0);
-
-  // ===================== LOADING =====================
-  if (loading && data.length === 0) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          bgcolor: "#090d16",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
-        <CircularProgress sx={{ color: "#38bdf8" }} />
-        <Typography sx={{ color: "#9ca3af" }}>Loading sales...</Typography>
-      </Box>
-    );
-  }
-
+  // ===================== RENDER =====================
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        height: "85vh",
+        maxHeight: "100vh",
+        overflow: "hidden",
         bgcolor: "#090d16",
         px: { xs: 1.5, sm: 2, md: 3 },
         py: { xs: 1.5, md: 2.5 },
         color: "#ffffff",
+        display: "flex",
+        flexDirection: "column",
+        boxSizing: "border-box",
       }}
     >
-      <Box sx={{ width: "100%", maxWidth: 1400, mx: "auto" }}>
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 1400,
+          mx: "auto",
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
         {/* ================= HEADER BANNER ================= */}
         <DarkBanner>
           <Box
@@ -382,41 +392,66 @@ const SaleList: React.FC = () => {
             alignItems={{ xs: "flex-start", md: "center" }}
             gap={2}
           >
-            <Box>
-              <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                <FiberManualRecord sx={{ fontSize: 10, color: "#10b981" }} />
-                <Typography
-                  variant="caption"
-                  fontWeight="bold"
-                  sx={{
-                    color: "#10b981",
-                    letterSpacing: 0.5,
-                    fontSize: "0.7rem",
-                  }}
-                >
-                  Logistic Management
-                </Typography>
-              </Box>
-
-              <Typography
-                variant="h5"
-                fontWeight="800"
+            <Box display="flex" alignItems="center" gap={2}>
+              <Button
+                variant="outlined"
+                startIcon={<ArrowBack />}
+                onClick={() => navigate("/dashboard")}
                 sx={{
-                  fontSize: { xs: "1.1rem", sm: "1.4rem", md: "1.6rem" },
-                  letterSpacing: 0.5,
+                  color: "#e5e7eb",
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  px: 2,
+                  py: 0.9,
+                  fontSize: "0.8rem",
+                  "&:hover": {
+                    borderColor: "#38bdf8",
+                    color: "#38bdf8",
+                    bgcolor: "rgba(56, 189, 248, 0.08)",
+                  },
                 }}
               >
-                Load Vehicle Details
-              </Typography>
+                Dashboard
+              </Button>
 
-              {data.length > 0 && (
+              <Box>
+                <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                  <FiberManualRecord sx={{ fontSize: 10, color: "#10b981" }} />
+                  <Typography
+                    variant="caption"
+                    fontWeight="bold"
+                    sx={{
+                      color: "#10b981",
+                      letterSpacing: 0.5,
+                      fontSize: "0.7rem",
+                    }}
+                  >
+                    Logistic Management
+                  </Typography>
+                </Box>
+
                 <Typography
-                  variant="caption"
-                  sx={{ color: "#9ca3af", mt: 0.5 }}
+                  variant="h5"
+                  fontWeight="800"
+                  sx={{
+                    fontSize: { xs: "1.1rem", sm: "1.4rem", md: "1.6rem" },
+                    letterSpacing: 0.5,
+                  }}
                 >
-                  Showing {data.length} of {totalEntries} vehicle
+                  Load Vehicle Details
                 </Typography>
-              )}
+
+                {totalEntries > 0 && (
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "#9ca3af", mt: 0.5 }}
+                  >
+                    {totalEntries} total entries
+                  </Typography>
+                )}
+              </Box>
             </Box>
 
             <Box display="flex" gap={1} flexWrap="wrap">
@@ -444,6 +479,7 @@ const SaleList: React.FC = () => {
                 variant="outlined"
                 startIcon={<RefreshIcon />}
                 onClick={fetchData}
+                disabled={loading}
                 sx={{
                   color: "#e5e7eb",
                   borderColor: "rgba(255, 255, 255, 0.15)",
@@ -467,7 +503,7 @@ const SaleList: React.FC = () => {
                 variant="outlined"
                 startIcon={<DeleteIcon />}
                 onClick={() => setDeleteAllDialogOpen(true)}
-                disabled={data.length === 0}
+                disabled={totalEntries === 0}
                 sx={{
                   color: "#f43f5e",
                   borderColor: "rgba(244, 63, 94, 0.3)",
@@ -493,256 +529,272 @@ const SaleList: React.FC = () => {
           </Box>
         </DarkBanner>
 
-        {/* ================= FILTERS ================= */}
-        <FilterCard>
-          <Grid container spacing={2} alignItems="flex-end">
-            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-              <Typography
-                sx={{
-                  color: "#9ca3af",
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  mb: 0.8,
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
-                }}
-              >
-                From Date
-              </Typography>
-              <StyledTextField
-                fullWidth
-                type="date"
-                value={fromDate}
-                onChange={(e) => {
-                  setFromDate(e.target.value);
-                  setPage(1);
-                }}
-                size="small"
-              />
-            </Grid>
+        {/* ================= FILTER BAR ================= */}
+        <FilterBar>
+          <Box display="flex" alignItems="center" flexWrap="wrap" gap={1.5}>
+            <StyledTextField
+              type="date"
+              size="small"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              sx={{ width: 160 }}
+            />
+            <Typography sx={{ color: "#6b7280", fontSize: "0.8rem" }}>
+              to
+            </Typography>
+            <StyledTextField
+              type="date"
+              size="small"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              sx={{ width: 160 }}
+            />
 
-            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-              <Typography
-                sx={{
-                  color: "#9ca3af",
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  mb: 0.8,
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
-                }}
-              >
-                To Date
-              </Typography>
-              <StyledTextField
-                fullWidth
-                type="date"
-                value={toDate}
-                onChange={(e) => {
-                  setToDate(e.target.value);
-                  setPage(1);
-                }}
-                size="small"
-              />
-            </Grid>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={handleApplyDateFilter}
+              sx={{
+                bgcolor: "#10b981",
+                color: "#fff",
+                fontWeight: 700,
+                textTransform: "none",
+                borderRadius: "8px",
+                px: 2,
+                fontSize: "0.75rem",
+                "&:hover": { bgcolor: "#059669" },
+              }}
+            >
+              Apply
+            </Button>
 
-            <Grid size={{ xs: 12, sm: 12, md: 4 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => {
-                  setFromDate("");
-                  setToDate("");
-                  setPage(1);
-                }}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleClearDateFilter}
+              disabled={!hasDateFilter && !fromDate && !toDate}
+              sx={{
+                color: "#9ca3af",
+                borderColor: "rgba(255, 255, 255, 0.15)",
+                fontWeight: 700,
+                textTransform: "none",
+                borderRadius: "8px",
+                px: 2,
+                fontSize: "0.75rem",
+                "&:hover": {
+                  borderColor: "#f43f5e",
+                  color: "#f43f5e",
+                  bgcolor: "rgba(244, 63, 94, 0.08)",
+                },
+              }}
+            >
+              Reset
+            </Button>
+
+            {hasDateFilter && (
+              <Chip
+                label={`Active: ${appliedFrom || "..."} → ${appliedTo || "..."}`}
+                size="small"
                 sx={{
-                  color: "#e5e7eb",
-                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  bgcolor: "rgba(56, 189, 248, 0.15)",
+                  color: "#38bdf8",
+                  border: "1px solid rgba(56, 189, 248, 0.4)",
                   fontWeight: 700,
-                  textTransform: "none",
+                  fontSize: "0.7rem",
+                  height: "26px",
+                }}
+              />
+            )}
+
+            {pageTotal > 0 && (
+              <Box
+                sx={{
+                  ml: { md: "auto" },
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  bgcolor: "rgba(56, 189, 248, 0.1)",
+                  border: "1px solid rgba(56, 189, 248, 0.3)",
                   borderRadius: "10px",
-                  py: 1.1,
-                  fontSize: "0.8rem",
-                  "&:hover": {
-                    borderColor: "#38bdf8",
-                    color: "#38bdf8",
-                    bgcolor: "rgba(56, 189, 248, 0.08)",
-                  },
+                  px: 2,
+                  py: 0.8,
                 }}
               >
-                Reset Filters
-              </Button>
-            </Grid>
-          </Grid>
-        </FilterCard>
+                <ShoppingCart sx={{ fontSize: 16, color: "#38bdf8" }} />
+                <Typography
+                  sx={{
+                    color: "#38bdf8",
+                    fontWeight: 700,
+                    fontSize: "0.8rem",
+                  }}
+                >
+                  Page Total: ₹ {pageTotal.toLocaleString()}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </FilterBar>
 
-        {/* ================= SUMMARY BAR ================= */}
-        {data.length > 0 && (
+        {/* ================= TABLE ================= */}
+        <TableContainerDark>
+          {/* Header (fixed) */}
           <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
-            flexWrap="wrap"
-            gap={2}
-            mb={2}
+            px={3}
+            py={2}
+            sx={{
+              borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+              flexShrink: 0,
+            }}
           >
-            <TotalChip>
-              <ShoppingCart sx={{ fontSize: 16 }} />
-              Total (this page): ₹ {grandTotalSum.toLocaleString()}
-            </TotalChip>
-
-            <Box
-              display="flex"
-              alignItems="center"
-              gap={1}
+            <Typography
               sx={{
-                bgcolor: "#111827",
-                px: 2,
-                py: 1,
-                borderRadius: "10px",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
+                color: "#ffffff",
+                fontWeight: 800,
+                fontSize: "0.95rem",
+                letterSpacing: 0.5,
               }}
             >
-              <Typography sx={{ color: "#9ca3af", fontSize: "0.75rem" }}>
-                Show:
-              </Typography>
-              <Select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setPage(1);
-                }}
-                size="small"
-                variant="standard"
-                disableUnderline
-                sx={{
-                  color: "#e5e7eb",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  "& .MuiSvgIcon-root": { color: "#9ca3af" },
-                }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      bgcolor: "#111827",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
-                      "& .MuiMenuItem-root": {
-                        color: "#e5e7eb",
-                        fontSize: "0.85rem",
-                        "&:hover": { bgcolor: "rgba(56, 189, 248, 0.1)" },
-                        "&.Mui-selected": {
-                          bgcolor: "rgba(56, 189, 248, 0.15)",
-                          color: "#38bdf8",
-                        },
-                      },
-                    },
-                  },
-                }}
-              >
-                {rowsPerPageOptions.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-              <Typography sx={{ color: "#9ca3af", fontSize: "0.75rem" }}>
-                entries
-              </Typography>
-            </Box>
+              VEHICLE LOAD LIST
+            </Typography>
+            <Chip
+              label={`${totalEntries} Entries`}
+              size="small"
+              sx={{
+                bgcolor: "rgba(56, 189, 248, 0.1)",
+                color: "#38bdf8",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                fontWeight: 700,
+                fontSize: "0.7rem",
+                height: "26px",
+              }}
+            />
           </Box>
-        )}
 
-        {/* ================= TABLE ================= */}
-        <TableContainerDark>
-          <Table>
-            <StyledTableHead>
-              <TableRow>
-                <TableCell align="center">Date</TableCell>
-                <TableCell align="center">Items</TableCell>
-                <TableCell align="center">Total Qty</TableCell>
-                <TableCell align="center">Grand Total</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </StyledTableHead>
-            <TableBody>
-              {data.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
-                    <Receipt sx={{ fontSize: 48, color: "#374151", mb: 1 }} />
-                    <Typography sx={{ color: "#9ca3af", mb: 0.5 }}>
-                      No sales found
-                    </Typography>
-                    <Typography sx={{ color: "#6b7280", fontSize: "0.75rem" }}>
-                      Click "Load Vehicle" to create your first entry
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data.map((row) => {
-                  const totalQty = (row.items || []).reduce(
-                    (s, i) => s + (i.quantity || 0),
-                    0
-                  );
-                  const rowTotal = getSaleTotal(row);
+          {/* Scroll Area */}
+          <TableScrollArea>
+            <ItemsTable>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "center", width: "50px" }}>#</th>
+                  <th style={{ textAlign: "center" }}>Date</th>
+                  <th style={{ textAlign: "center" }}>Items</th>
+                  <th style={{ textAlign: "center" }}>Total Qty</th>
+                  <th style={{ textAlign: "center" }}>Grand Total</th>
+                  <th style={{ textAlign: "center", width: "140px" }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      style={{ textAlign: "center", padding: "40px 12px" }}
+                    >
+                      <CircularProgress sx={{ color: "#38bdf8" }} size={32} />
+                      <Typography
+                        sx={{ color: "#9ca3af", fontSize: "0.9rem", mt: 1 }}
+                      >
+                        Loading sales...
+                      </Typography>
+                    </td>
+                  </tr>
+                ) : data.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      style={{ textAlign: "center", padding: "40px 12px" }}
+                    >
+                      <Receipt
+                        style={{
+                          fontSize: 44,
+                          color: "#374151",
+                          marginBottom: 8,
+                        }}
+                      />
+                      <Typography sx={{ color: "#9ca3af", fontSize: "0.9rem" }}>
+                        No sales found
+                      </Typography>
+                      <Typography
+                        sx={{ color: "#6b7280", fontSize: "0.75rem", mt: 0.5 }}
+                      >
+                        {hasDateFilter
+                          ? "Try changing the date filter"
+                          : "Click 'Load Vehicle' to create your first entry"}
+                      </Typography>
+                    </td>
+                  </tr>
+                ) : (
+                  data.map((row, idx) => {
+                    const totalQty = (row.items || []).reduce(
+                      (s, i) => s + (i.quantity || 0),
+                      0
+                    );
+                    const rowTotal = getSaleTotal(row);
 
-                  return (
-                    <StyledTableRow key={row._id}>
-                      <TableCell align="center">
-                        <Chip
-                          label={formatDate(row.date)}
-                          size="small"
-                          sx={{
-                            bgcolor: "rgba(156, 163, 175, 0.1)",
-                            color: "#e5e7eb",
-                            border: "1px solid rgba(156, 163, 175, 0.2)",
-                            fontSize: "0.7rem",
-                            fontWeight: 600,
-                          }}
-                        />
-                      </TableCell>
-
-                      <TableCell align="center">
-                        <Chip
-                          label={`${(row.items || []).length} items`}
-                          size="small"
-                          sx={{
-                            bgcolor: "rgba(192, 132, 252, 0.1)",
-                            color: "#c084fc",
-                            border: "1px solid rgba(192, 132, 252, 0.3)",
-                            fontSize: "0.7rem",
-                            fontWeight: 600,
-                          }}
-                        />
-                      </TableCell>
-
-                      <TableCell align="center">
-                        <Chip
-                          label={totalQty}
-                          size="small"
-                          sx={{
-                            bgcolor: "rgba(56, 189, 248, 0.1)",
-                            color: "#38bdf8",
-                            border: "1px solid rgba(56, 189, 248, 0.3)",
-                            fontSize: "0.7rem",
-                            fontWeight: 600,
-                          }}
-                        />
-                      </TableCell>
-
-                      <TableCell align="center">
-                        <Typography
-                          sx={{
-                            color: "#34d399",
-                            fontWeight: 800,
-                            fontSize: "0.95rem",
-                          }}
-                        >
-                          ₹ {rowTotal.toLocaleString()}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell align="center">
-                        <Box display="flex" justifyContent="center" gap={0.5}>
+                    return (
+                      <tr key={row._id}>
+                        <td style={{ textAlign: "center", color: "#6b7280" }}>
+                          {(page - 1) * limit + idx + 1}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <Chip
+                            label={formatDate(row.date)}
+                            size="small"
+                            sx={{
+                              bgcolor: "rgba(156, 163, 175, 0.1)",
+                              color: "#e5e7eb",
+                              border: "1px solid rgba(156, 163, 175, 0.2)",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              height: "24px",
+                            }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <Chip
+                            label={`${(row.items || []).length} items`}
+                            size="small"
+                            sx={{
+                              bgcolor: "rgba(192, 132, 252, 0.1)",
+                              color: "#c084fc",
+                              border: "1px solid rgba(192, 132, 252, 0.3)",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              height: "24px",
+                            }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <Chip
+                            label={totalQty}
+                            size="small"
+                            sx={{
+                              bgcolor: "rgba(56, 189, 248, 0.1)",
+                              color: "#38bdf8",
+                              border: "1px solid rgba(56, 189, 248, 0.3)",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              height: "24px",
+                            }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <Typography
+                            sx={{
+                              color: "#34d399",
+                              fontWeight: 800,
+                              fontSize: "0.95rem",
+                            }}
+                          >
+                            ₹ {rowTotal.toLocaleString()}
+                          </Typography>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
                           <IconButton
                             size="small"
                             onClick={() => {
@@ -789,104 +841,122 @@ const SaleList: React.FC = () => {
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                        </Box>
-                      </TableCell>
-                    </StyledTableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainerDark>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </ItemsTable>
+          </TableScrollArea>
 
-        {/* ================= PAGINATION ================= */}
-        {totalEntries > 0 && (
+          {/* ================= PAGINATION BAR (fixed) ================= */}
           <Box
-            display="flex"
-            flexDirection={{ xs: "column", sm: "row" }}
-            justifyContent="space-between"
-            alignItems="center"
-            gap={2}
-            mt={3}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 1.5,
+              px: 3,
+              py: 1.8,
+              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+              flexShrink: 0,
+            }}
           >
-            <Typography sx={{ color: "#9ca3af", fontSize: "0.8rem" }}>
-              Showing {(page - 1) * rowsPerPage + 1} to{" "}
-              {Math.min(page * rowsPerPage, totalEntries)} of {totalEntries}{" "}
-              entries
-            </Typography>
-
-            <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
-              <PaginationButton
-                onClick={() => handlePageChange(1)}
-                disabled={page === 1}
+            <Box display="flex" alignItems="center" gap={1.5}>
+              <Typography
+                sx={{ color: "#9ca3af", fontSize: "0.75rem", fontWeight: 600 }}
               >
-                <FirstPage fontSize="small" />
-              </PaginationButton>
-              <PaginationButton
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 1}
-              >
-                <ChevronLeft fontSize="small" />
-              </PaginationButton>
-
-              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-                let pageNum;
-                if (totalPages <= 5) pageNum = idx + 1;
-                else if (page <= 3) pageNum = idx + 1;
-                else if (page >= totalPages - 2) pageNum = totalPages - 4 + idx;
-                else pageNum = page - 2 + idx;
-
-                const isActive = page === pageNum;
-
-                return (
-                  <Button
-                    key={idx}
-                    onClick={() => handlePageChange(pageNum)}
-                    sx={{
-                      minWidth: "38px",
-                      height: "38px",
-                      p: 0,
-                      borderRadius: "10px",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      color: isActive ? "#ffffff" : "#9ca3af",
-                      bgcolor: isActive ? "#38bdf8" : "transparent",
-                      border: isActive
-                        ? "1px solid #38bdf8"
+                Rows per page:
+              </Typography>
+              {[10, 25, 50, 100].map((n) => (
+                <Chip
+                  key={n}
+                  label={n}
+                  size="small"
+                  onClick={() => {
+                    setLimit(n);
+                    setPage(1);
+                  }}
+                  sx={{
+                    bgcolor:
+                      limit === n
+                        ? "rgba(56, 189, 248, 0.2)"
+                        : "rgba(255, 255, 255, 0.05)",
+                    color: limit === n ? "#38bdf8" : "#9ca3af",
+                    border:
+                      limit === n
+                        ? "1px solid rgba(56, 189, 248, 0.5)"
                         : "1px solid rgba(255, 255, 255, 0.1)",
-                      boxShadow: isActive
-                        ? "0 4px 14px rgba(56, 189, 248, 0.3)"
-                        : "none",
-                      "&:hover": {
-                        bgcolor: isActive
-                          ? "#0ea5e9"
-                          : "rgba(56, 189, 248, 0.1)",
-                        borderColor: "#38bdf8",
-                        color: isActive ? "#ffffff" : "#38bdf8",
-                      },
-                    }}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-
-              <PaginationButton
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page === totalPages}
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    height: "26px",
+                    cursor: "pointer",
+                  }}
+                />
+              ))}
+              <Typography
+                sx={{ color: "#6b7280", fontSize: "0.75rem", ml: 1 }}
               >
-                <ChevronRight fontSize="small" />
-              </PaginationButton>
-              <PaginationButton
-                onClick={() => handlePageChange(totalPages)}
-                disabled={page === totalPages}
-              >
-                <LastPage fontSize="small" />
-              </PaginationButton>
+                {totalEntries > 0
+                  ? `${(page - 1) * limit + 1}–${Math.min(
+                      page * limit,
+                      totalEntries
+                    )} of ${totalEntries}`
+                  : "0 records"}
+              </Typography>
             </Box>
+
+            <Pagination
+              count={Math.max(1, totalPages)}
+              page={page}
+              onChange={(_, v) => setPage(v)}
+              disabled={loading}
+              shape="rounded"
+              size="small"
+              sx={{
+                "& .MuiPaginationItem-root": {
+                  color: "#9ca3af",
+                  borderColor: "rgba(255, 255, 255, 0.1)",
+                  fontWeight: 700,
+                  fontSize: "0.8rem",
+                  "&:hover": {
+                    bgcolor: "rgba(56, 189, 248, 0.1)",
+                    color: "#38bdf8",
+                  },
+                },
+                "& .Mui-selected": {
+                  bgcolor: "rgba(56, 189, 248, 0.2) !important",
+                  color: "#38bdf8 !important",
+                  borderColor: "rgba(56, 189, 248, 0.5) !important",
+                },
+              }}
+            />
           </Box>
-        )}
+        </TableContainerDark>
       </Box>
+
+      {/* ================= FLOATING DASHBOARD BUTTON ================= */}
+      <Tooltip title="Back to Dashboard" placement="left">
+        <Fab
+          onClick={() => navigate("/dashboard")}
+          sx={{
+            position: "fixed",
+            bottom: 20,
+            right: 20,
+            zIndex: 1200,
+            bgcolor: "#38bdf8",
+            color: "#0d1527",
+            width: 52,
+            height: 52,
+            boxShadow: "0 8px 24px rgba(56, 189, 248, 0.45)",
+            "&:hover": { bgcolor: "#0ea5e9" },
+          }}
+        >
+          <HomeIcon />
+        </Fab>
+      </Tooltip>
 
       {/* ================= VIEW DIALOG ================= */}
       <Dialog
@@ -916,56 +986,85 @@ const SaleList: React.FC = () => {
                 alignItems: "center",
               }}
             >
-              <Box>
-                Load Vehicle Details
-                <Typography
+              <Box display="flex" alignItems="center" gap={1.5}>
+                <Box
                   sx={{
-                    color: "#9ca3af",
-                    fontSize: "0.75rem",
-                    fontWeight: 500,
+                    width: 32,
+                    height: 32,
+                    borderRadius: "8px",
+                    bgcolor: "#0c2a3a",
+                    color: "#38bdf8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  {formatDate(selectedSale.date)}
-                </Typography>
+                  <ViewIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Box>
+                  <Typography
+                    sx={{
+                      color: "#38bdf8",
+                      fontWeight: 800,
+                      fontSize: "0.9rem",
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Load Vehicle Details
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontSize: "0.72rem",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {formatDate(selectedSale.date)}
+                  </Typography>
+                </Box>
               </Box>
-              <Chip
-                label="VIEW"
+              <IconButton
+                onClick={() => setViewDialogOpen(false)}
                 size="small"
                 sx={{
-                  bgcolor: "rgba(52, 211, 153, 0.1)",
-                  color: "#34d399",
-                  border: "1px solid rgba(52, 211, 153, 0.3)",
-                  fontWeight: 700,
-                  fontSize: "0.65rem",
+                  color: "#9ca3af",
+                  "&:hover": {
+                    color: "#f43f5e",
+                    bgcolor: "rgba(244, 63, 94, 0.1)",
+                  },
                 }}
-              />
+              >
+                <CloseIcon />
+              </IconButton>
             </DialogTitle>
 
             <DialogContent sx={{ p: 3 }}>
               {/* Items table */}
-              <TableContainer
+              <Box
                 sx={{
                   bgcolor: "#111827",
                   borderRadius: "12px",
                   border: "1px solid rgba(255, 255, 255, 0.08)",
+                  overflow: "hidden",
                 }}
               >
-                <Table size="small">
-                  <StyledTableHead>
-                    <TableRow>
-                      <TableCell>#</TableCell>
-                      <TableCell>Item</TableCell>
-                      <TableCell align="center">MRP</TableCell>
-                      <TableCell align="center">Rate</TableCell>
-                      <TableCell align="center">Qty</TableCell>
-                      <TableCell align="center">Total</TableCell>
-                    </TableRow>
-                  </StyledTableHead>
-                  <TableBody>
+                <ItemsTable>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "center" }}>#</th>
+                      <th>Item</th>
+                      <th style={{ textAlign: "center" }}>MRP</th>
+                      <th style={{ textAlign: "center" }}>Rate</th>
+                      <th style={{ textAlign: "center" }}>Qty</th>
+                      <th style={{ textAlign: "center" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {(selectedSale.items || []).map((item, idx) => (
-                      <StyledTableRow key={idx}>
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell>
+                      <tr key={idx}>
+                        <td style={{ textAlign: "center" }}>{idx + 1}</td>
+                        <td>
                           <Typography
                             sx={{
                               color: "#ffffff",
@@ -975,11 +1074,13 @@ const SaleList: React.FC = () => {
                           >
                             {item.itemName}
                           </Typography>
-                        </TableCell>
-                        <TableCell align="center">₹ {item.mrp}</TableCell>
-                        <TableCell align="center">₹ {item.rate}</TableCell>
-                        <TableCell align="center">{item.quantity}</TableCell>
-                        <TableCell align="center">
+                        </td>
+                        <td style={{ textAlign: "center" }}>₹ {item.mrp}</td>
+                        <td style={{ textAlign: "center" }}>₹ {item.rate}</td>
+                        <td style={{ textAlign: "center" }}>
+                          {item.quantity}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
                           <Typography
                             sx={{
                               color: "#34d399",
@@ -989,12 +1090,12 @@ const SaleList: React.FC = () => {
                           >
                             ₹ {getItemTotal(item).toLocaleString()}
                           </Typography>
-                        </TableCell>
-                      </StyledTableRow>
+                        </td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                  </tbody>
+                </ItemsTable>
+              </Box>
 
               {/* Grand total */}
               <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
