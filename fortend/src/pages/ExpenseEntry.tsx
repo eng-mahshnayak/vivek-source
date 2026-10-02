@@ -1,7 +1,6 @@
 
 
 
-
 // import React, { useEffect, useState } from "react";
 // import { useNavigate } from "react-router-dom";
 // import axios from "axios";
@@ -34,7 +33,7 @@
 //   Edit as EditIcon,
 //   Receipt,
 //   LocalGasStation,
-//         Home as HomeIcon,
+//   Home as HomeIcon,
 //   Refresh as RefreshIcon,
 //   FilterAlt as FilterIcon,
 //   Clear as ClearIcon,
@@ -80,6 +79,8 @@
 //     Authorization: `Bearer ${localStorage.getItem("erptoken") || ""}`,
 //   },
 // });
+
+// const todayStr = () => new Date().toISOString().split("T")[0];
 
 // // ===================== STYLED =====================
 
@@ -221,7 +222,6 @@
 
 // // ===================== HELPERS =====================
 
-// const todayStr = () => new Date().toISOString().split("T")[0];
 // const firstOfMonthStr = () => {
 //   const d = new Date();
 //   return new Date(d.getFullYear(), d.getMonth(), 1)
@@ -239,9 +239,7 @@
 //   const [grandTotal, setGrandTotal] = useState(0);
 //   const [saving, setSaving] = useState(false);
 
-
 //   console.log(grandTotal);
-  
 
 //   // Pagination
 //   const [page, setPage] = useState(1);
@@ -263,6 +261,7 @@
 //   const [description, setDescription] = useState("");
 //   const [paidVia, setPaidVia] = useState(PAYMENT_METHODS[0]);
 //   const [amount, setAmount] = useState<number | "">("");
+//   const [expenseDate, setExpenseDate] = useState<string>(todayStr()); // ✅ NEW
 
 //   // Edit mode
 //   const [editingId, setEditingId] = useState<string | null>(null);
@@ -333,6 +332,7 @@
 //     setDescription("");
 //     setPaidVia(PAYMENT_METHODS[0]);
 //     setAmount("");
+//     setExpenseDate(todayStr()); // ✅ reset date to today
 //     setEditingId(null);
 //   };
 
@@ -408,6 +408,10 @@
 //       toast.error("Please enter a valid amount");
 //       return;
 //     }
+//     if (!expenseDate) {
+//       toast.error("Please select a date");
+//       return;
+//     }
 
 //     try {
 //       setSaving(true);
@@ -417,7 +421,7 @@
 //         description: description.trim(),
 //         paidVia,
 //         amount: Number(amount),
-//         date: new Date().toISOString().split("T")[0],
+//         date: expenseDate, // ✅ user-selected date
 //       };
 
 //       if (editingId) {
@@ -495,6 +499,12 @@
 //     setDescription(expense.description);
 //     setPaidVia(expense.paidVia);
 //     setAmount(expense.amount);
+
+//     // ✅ Date ko YYYY-MM-DD format me load karo
+//     const d = expense.date || expense.createdAt;
+//     const formatted = d ? new Date(d).toISOString().split("T")[0] : todayStr();
+//     setExpenseDate(formatted);
+
 //     setFormOpen(true);
 //   };
 
@@ -1140,8 +1150,7 @@
 //         </TableContainerDark>
 //       </Box>
 
-
-//    {/* ================= FLOATING DASHBOARD BUTTON ================= */}
+//       {/* ================= FLOATING DASHBOARD BUTTON ================= */}
 //       <Tooltip title="Back to Dashboard" placement="left">
 //         <Fab
 //           onClick={() => navigate("/dashboard")}
@@ -1161,8 +1170,6 @@
 //           <HomeIcon />
 //         </Fab>
 //       </Tooltip>
-
-
 
 //       {/* ================= FORM MODAL ================= */}
 //       <Dialog
@@ -1338,6 +1345,18 @@
 //                   setAmount(e.target.value === "" ? "" : Number(e.target.value))
 //                 }
 //                 inputProps={{ min: 0, step: 1 }}
+//               />
+//             </Grid>
+
+//             {/* ✅ DATE — NEW FIELD */}
+//             <Grid size={{ xs: 12, sm: 6 }}>
+//               <FieldLabel>Expense Date *</FieldLabel>
+//               <StyledTextField
+//                 fullWidth
+//                 type="date"
+//                 value={expenseDate}
+//                 onChange={(e) => setExpenseDate(e.target.value)}
+//                 inputProps={{ max: todayStr() }} // future date block (optional)
 //               />
 //             </Grid>
 //           </Grid>
@@ -1525,7 +1544,8 @@
 
 
 
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -1563,6 +1583,9 @@ import {
   Clear as ClearIcon,
   Close as CloseIcon,
   Lock as LockIcon,
+  AccountBalanceWallet,
+  Functions,
+  Category as CategoryIcon,
 } from "@mui/icons-material";
 
 // ===================== TYPES =====================
@@ -1626,6 +1649,45 @@ const FilterBar = styled(Box)(() => ({
   marginBottom: "16px",
   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
   flexShrink: 0,
+}));
+
+/* ===== NEW: Analytical Summary Bar ===== */
+const AnalyticsBar = styled(Box)(() => ({
+  backgroundColor: "#0d1527",
+  borderRadius: "16px",
+  border: "1px solid rgba(244, 63, 94, 0.25)",
+  padding: "16px 20px",
+  marginBottom: "16px",
+  boxShadow: "0 8px 24px rgba(244, 63, 94, 0.08)",
+  flexShrink: 0,
+  position: "relative",
+  overflow: "hidden",
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "2px",
+    background:
+      "linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.6), transparent)",
+  },
+}));
+
+const StatCard = styled(Box)<{ accent: string }>(({ accent }) => ({
+  backgroundColor: "#111827",
+  borderRadius: "12px",
+  border: `1px solid ${accent}22`,
+  padding: "12px 14px",
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  transition: "all 0.25s ease",
+  "&:hover": {
+    transform: "translateY(-2px)",
+    borderColor: `${accent}66`,
+    boxShadow: `0 8px 20px ${accent}22`,
+  },
 }));
 
 const StyledTextField = styled(TextField)(() => ({
@@ -1753,6 +1815,12 @@ const firstOfMonthStr = () => {
     .split("T")[0];
 };
 
+const formatMoney = (n: number) =>
+  `₹ ${(Number(n) || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+
 // ===================== MAIN =====================
 
 const ExpenseEntry: React.FC = () => {
@@ -1762,8 +1830,6 @@ const ExpenseEntry: React.FC = () => {
   const [listLoading, setListLoading] = useState(true);
   const [grandTotal, setGrandTotal] = useState(0);
   const [saving, setSaving] = useState(false);
-
-  console.log(grandTotal);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -1785,7 +1851,7 @@ const ExpenseEntry: React.FC = () => {
   const [description, setDescription] = useState("");
   const [paidVia, setPaidVia] = useState(PAYMENT_METHODS[0]);
   const [amount, setAmount] = useState<number | "">("");
-  const [expenseDate, setExpenseDate] = useState<string>(todayStr()); // ✅ NEW
+  const [expenseDate, setExpenseDate] = useState<string>(todayStr());
 
   // Edit mode
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1811,7 +1877,14 @@ const ExpenseEntry: React.FC = () => {
 
       if (res.data?.success === true) {
         setExpenses(res.data.data || []);
-        setGrandTotal(res.data.grandTotal || 0);
+
+        const gt =
+          res.data.grandTotal ??
+          res.data.totalAmount ??
+          res.data.totalSum ??
+          res.data.totalExpenses ??
+          0;
+        setGrandTotal(Number(gt) || 0);
 
         const count =
           res.data.totalCount ??
@@ -1850,13 +1923,65 @@ const ExpenseEntry: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, appliedFrom, appliedTo]);
 
+  // ===================== ✅ ANALYTICS (Derived) =====================
+  const analytics = useMemo(() => {
+    const pageCount = expenses.length;
+
+    const pageSum = expenses.reduce(
+      (s, e) => s + (Number(e.amount) || 0),
+      0
+    );
+
+    const total = grandTotal > 0 ? grandTotal : pageSum;
+
+    const avgPerEntry =
+      totalCount > 0
+        ? total / totalCount
+        : pageCount > 0
+        ? total / pageCount
+        : 0;
+
+    // Top category (based on current page)
+    const catMap = new Map<string, number>();
+    expenses.forEach((e) => {
+      const c = String(e.category || "Other");
+      catMap.set(c, (catMap.get(c) || 0) + (Number(e.amount) || 0));
+    });
+    let topCategory = "—";
+    let topCategoryAmount = 0;
+    catMap.forEach((val, key) => {
+      if (val > topCategoryAmount) {
+        topCategoryAmount = val;
+        topCategory = key;
+      }
+    });
+
+    // Today's expense (from current page)
+    const today = todayStr();
+    const todayTotal = expenses
+      .filter((e) => {
+        const d = new Date(e.date || e.createdAt);
+        return d.toISOString().split("T")[0] === today;
+      })
+      .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+    return {
+      total,
+      count: totalCount || pageCount,
+      avgPerEntry,
+      topCategory,
+      topCategoryAmount,
+      todayTotal,
+    };
+  }, [expenses, grandTotal, totalCount]);
+
   // ===================== FORM HANDLERS =====================
   const resetForm = () => {
     setCategory(EXPENSE_CATEGORIES[0]);
     setDescription("");
     setPaidVia(PAYMENT_METHODS[0]);
     setAmount("");
-    setExpenseDate(todayStr()); // ✅ reset date to today
+    setExpenseDate(todayStr());
     setEditingId(null);
   };
 
@@ -1945,11 +2070,10 @@ const ExpenseEntry: React.FC = () => {
         description: description.trim(),
         paidVia,
         amount: Number(amount),
-        date: expenseDate, // ✅ user-selected date
+        date: expenseDate,
       };
 
       if (editingId) {
-        // ---------- UPDATE ----------
         const res = await axios.put(
           `${API_URL}/expense/${editingId}`,
           payload,
@@ -1972,7 +2096,6 @@ const ExpenseEntry: React.FC = () => {
           );
         }
       } else {
-        // ---------- CREATE ----------
         const res = await axios.post(
           `${API_URL}/expense`,
           payload,
@@ -2024,7 +2147,6 @@ const ExpenseEntry: React.FC = () => {
     setPaidVia(expense.paidVia);
     setAmount(expense.amount);
 
-    // ✅ Date ko YYYY-MM-DD format me load karo
     const d = expense.date || expense.createdAt;
     const formatted = d ? new Date(d).toISOString().split("T")[0] : todayStr();
     setExpenseDate(formatted);
@@ -2188,7 +2310,6 @@ const ExpenseEntry: React.FC = () => {
             </Box>
 
             <Box display="flex" gap={1.5} alignItems="center" flexWrap="wrap">
-              {/* EXPENSE ENTRY BUTTON — Refresh ke LEFT */}
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -2263,6 +2384,220 @@ const ExpenseEntry: React.FC = () => {
             </Box>
           </Box>
         </DarkBanner>
+
+        {/* ================= ANALYTICAL SUMMARY BAR (NEW) ================= */}
+        <AnalyticsBar>
+          <Grid container spacing={1.5}>
+            {/* TOTAL EXPENSES */}
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <StatCard accent="#f43f5e">
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    bgcolor: "rgba(244, 63, 94, 0.15)",
+                    color: "#f43f5e",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <AccountBalanceWallet sx={{ fontSize: 22 }} />
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      letterSpacing: 0.8,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Total Expenses{hasDateFilter ? " (Filtered)" : ""}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#f43f5e",
+                      fontWeight: 900,
+                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      mt: 0.3,
+                      letterSpacing: 0.3,
+                      textShadow: "0 0 14px rgba(244, 63, 94, 0.4)",
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {listLoading ? "..." : formatMoney(analytics.total)}
+                  </Typography>
+                </Box>
+              </StatCard>
+            </Grid>
+
+            {/* TOTAL ENTRIES */}
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <StatCard accent="#c084fc">
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    bgcolor: "rgba(192, 132, 252, 0.15)",
+                    color: "#c084fc",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Receipt sx={{ fontSize: 22 }} />
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      letterSpacing: 0.8,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Total Entries
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#c084fc",
+                      fontWeight: 900,
+                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      mt: 0.3,
+                      letterSpacing: 0.3,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {listLoading ? "..." : analytics.count}
+                  </Typography>
+                </Box>
+              </StatCard>
+            </Grid>
+
+            {/* TOP CATEGORY */}
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <StatCard accent="#fbbf24">
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    bgcolor: "rgba(251, 191, 36, 0.15)",
+                    color: "#fbbf24",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <CategoryIcon sx={{ fontSize: 22 }} />
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      letterSpacing: 0.8,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Top Category
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#fbbf24",
+                      fontWeight: 900,
+                      fontSize: "0.9rem",
+                      mt: 0.3,
+                      letterSpacing: 0.2,
+                      lineHeight: 1.2,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={analytics.topCategory}
+                  >
+                    {listLoading ? "..." : analytics.topCategory}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontSize: "0.65rem",
+                      fontWeight: 600,
+                      mt: 0.2,
+                    }}
+                  >
+                    {formatMoney(analytics.topCategoryAmount)}
+                  </Typography>
+                </Box>
+              </StatCard>
+            </Grid>
+
+            {/* AVG / ENTRY */}
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <StatCard accent="#38bdf8">
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "10px",
+                    bgcolor: "rgba(56, 189, 248, 0.15)",
+                    color: "#38bdf8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Functions sx={{ fontSize: 22 }} />
+                </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      letterSpacing: 0.8,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Avg / Entry
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#38bdf8",
+                      fontWeight: 900,
+                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      mt: 0.3,
+                      letterSpacing: 0.3,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {listLoading ? "..." : formatMoney(analytics.avgPerEntry)}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#9ca3af",
+                      fontSize: "0.65rem",
+                      fontWeight: 600,
+                      mt: 0.2,
+                    }}
+                  >
+                    Today: {formatMoney(analytics.todayTotal)}
+                  </Typography>
+                </Box>
+              </StatCard>
+            </Grid>
+          </Grid>
+        </AnalyticsBar>
 
         {/* ================= DATE FILTER BAR ================= */}
         <FilterBar>
@@ -2400,7 +2735,6 @@ const ExpenseEntry: React.FC = () => {
 
         {/* ================= LOG SHEET ================= */}
         <TableContainerDark>
-          {/* Header (fixed) */}
           <Box
             display="flex"
             justifyContent="space-between"
@@ -2436,7 +2770,6 @@ const ExpenseEntry: React.FC = () => {
             />
           </Box>
 
-          {/* Scroll Area — SIRF YAHAN SCROLL HOGA */}
           <TableScrollArea>
             <ItemsTable>
               <thead>
@@ -2587,7 +2920,7 @@ const ExpenseEntry: React.FC = () => {
             </ItemsTable>
           </TableScrollArea>
 
-          {/* ================= PAGINATION BAR (fixed) ================= */}
+          {/* ================= PAGINATION BAR ================= */}
           <Box
             sx={{
               display: "flex",
@@ -2782,7 +3115,6 @@ const ExpenseEntry: React.FC = () => {
 
         <DialogContent sx={{ p: 3 }}>
           <Grid container spacing={2}>
-            {/* CATEGORY */}
             <Grid size={{ xs: 12, sm: 6 }}>
               <FieldLabel>Expense Category</FieldLabel>
               <StyledSelect
@@ -2814,7 +3146,6 @@ const ExpenseEntry: React.FC = () => {
               </StyledSelect>
             </Grid>
 
-            {/* PAID VIA */}
             <Grid size={{ xs: 12, sm: 6 }}>
               <FieldLabel>Payment By</FieldLabel>
               <StyledSelect
@@ -2846,7 +3177,6 @@ const ExpenseEntry: React.FC = () => {
               </StyledSelect>
             </Grid>
 
-            {/* DESCRIPTION */}
             <Grid size={{ xs: 12, sm: 8 }}>
               <FieldLabel>Description / Reason *</FieldLabel>
               <StyledTextField
@@ -2857,7 +3187,6 @@ const ExpenseEntry: React.FC = () => {
               />
             </Grid>
 
-            {/* AMOUNT */}
             <Grid size={{ xs: 12, sm: 4 }}>
               <FieldLabel>Amount (₹) *</FieldLabel>
               <StyledTextField
@@ -2872,7 +3201,6 @@ const ExpenseEntry: React.FC = () => {
               />
             </Grid>
 
-            {/* ✅ DATE — NEW FIELD */}
             <Grid size={{ xs: 12, sm: 6 }}>
               <FieldLabel>Expense Date *</FieldLabel>
               <StyledTextField
@@ -2880,7 +3208,7 @@ const ExpenseEntry: React.FC = () => {
                 type="date"
                 value={expenseDate}
                 onChange={(e) => setExpenseDate(e.target.value)}
-                inputProps={{ max: todayStr() }} // future date block (optional)
+                inputProps={{ max: todayStr() }}
               />
             </Grid>
           </Grid>

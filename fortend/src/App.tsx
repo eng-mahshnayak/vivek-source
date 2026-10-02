@@ -5,34 +5,17 @@ import Login from "./common/Login";
 import Signup from "./common/Signup";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
-
 import DailyCashSummery from "./pages/DailyCashSummery/DailyCashSummery";
 import DailyCashSummaryForm from "./pages/DailyCashSummery/DailyCashSummeryFrom";
-
 import CreditCustomerEntry from "./pages/CreditCustomerEntry";
-
-
 import DailyCashSummeryFromUpdate from "./pages/DailyCashSummery/DailyCashSummeryFromUpdate";
-
 import ForgotPassword from "./common/ForgotPassword";
 import VerifyOTP from "./common/VerifyOTP";
 import ResetPassword from "./common/ResetPassword";
-
-// Import route protection components
 import ProtectedRoute from "./route/protectedRoute";
 import PublicRoute from "./route/PublicRoute";
-
 import { Toaster } from "react-hot-toast";
-
-
-
-
-// Import 404 Page
 import NotFound from "./pages/NotFound";
-
-
-
-
 import SaleInvoice from "./pages/sale/SaleInvoice";
 import SaleList from "./pages/sale/SaleList";
 import SaleEdit from "./pages/sale/SaleEdit";
@@ -41,8 +24,6 @@ import SaleReturnList from "./pages/SaleReturn/SaleReturnList";
 import ExpenseEntry from "./pages/ExpenseEntry";
 import PaymentReceivedEntry from "./pages/PaymentReceivedEntry";
 import CustomerManagement from "./pages/CustomerManagement";
-
-
 import ProductTable from "./pages/ProductTable";
 import CustomerLedger from "./pages/CustomerLedger";
 import CustomerLedgerDetail from "./pages/CustomerLedgerDetail";
@@ -87,13 +68,7 @@ function App() {
 <Route path="/customer-ledger/:customerId" element={<CustomerLedgerDetail />} />
 
 
-        
 
-            
-
-          
-
-            {/* Daily Cash Routes */}
             <Route 
               path="note-summary-entry/create" 
               element={<DailyCashSummaryForm />} 

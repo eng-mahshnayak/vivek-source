@@ -60,7 +60,7 @@ const getTodayeData = async (req, res) => {
     });
 
     const totalpreviousPaymentData = PaymentReceivedData.reduce(
-      (sum, entry) => sum + (entry.previousPayment || 0),
+      (sum, entry) => sum + (entry.amount || 0),
       0
     );
 
