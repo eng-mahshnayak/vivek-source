@@ -111,7 +111,7 @@ const getAllSales = async (req, res) => {
 // =============================
 const getSaleById = async (req, res) => {
     try {
-        const sale = await Sale.findById(req.params.id)
+        const sale = await Vehicle.findById(req.params.id)
 
 
         if (!sale) {
@@ -150,109 +150,118 @@ const getSaleById = async (req, res) => {
 
 
 // =============================
-// UPDATE SALE
+// UPDATE VEHICLE
 // =============================
 const updateSale = async (req, res) => {
-    try {
-        const { customerId, items, date } = req.body;
+  try {
+    console.log(req.body, "update vehicle");
 
-        let sale = await Sale.findById(req.params.id);
-        if (!sale) {
-            return res.json({
-                success: false,
-                statusCode: 404,
-                message: 'Sale not found',
-            });
-        }
+    const { items, totalValue, date } = req.body;
 
-        // Validate customer if changing
-        if (customerId) {
-            const customer = await Customer.findById(customerId);
-            if (!customer) {
-                return res.json({
-                    success: false,
-                    statusCode: 404,
-                    message: 'Customer not found',
-                });
-            }
-        }
+    // Find existing vehicle
+    let vehicle = await Vehicle.findById(req.params.id);
 
-        // Validate + recalculate items
-        let finalItems = sale.items;
-        let grandTotal = sale.grandTotal;
-
-        if (items && items.length > 0) {
-            finalItems = [];
-            grandTotal = 0;
-
-            for (const item of items) {
-                const product = await Product.findById(item.productId);
-                if (!product) {
-                    return res.json({
-                        success: false,
-                        statusCode: 404,
-                        message: `Product not found: ${item.itemName}`,
-                    });
-                }
-
-                const qty = Number(item.quantity);
-                const rate = Number(item.rate);
-                const totalAmount = qty * rate;
-
-                finalItems.push({
-                    productId: product._id,
-                    itemName: product.itemName,
-                    mrp: product.mrp,
-                    rate,
-                    quantity: qty,
-                    totalAmount,
-                });
-
-                grandTotal += totalAmount;
-            }
-        }
-
-        sale = await Sale.findByIdAndUpdate(
-            req.params.id,
-            {
-                customerId: customerId || sale.customerId,
-                items: finalItems,
-                grandTotal,
-                date: date || sale.date,
-            },
-            { new: true, runValidators: true }
-        )
-            .populate('customerId', 'name mobile')
-            .populate('items.productId', 'itemName mrp unit');
-
-        res.json({
-            success: true,
-            statusCode: 200,
-            message: 'Sale updated successfully',
-            data: sale,
-        });
-
-    } catch (error) {
-        console.error('Update Sale Error:', error);
-
-        if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map(err => err.message);
-            return res.json({
-                success: false,
-                statusCode: 400,
-                message: 'Validation Error',
-                errors: messages,
-            });
-        }
-
-        res.json({
-            success: false,
-            statusCode: 500,
-            message: 'Internal server error',
-        });
+    if (!vehicle) {
+      return res.json({
+        success: false,
+        statusCode: 404,
+        message: "Vehicle not found",
+      });
     }
-};
 
+    // Validate items
+    let finalItems = vehicle.items;
+
+    if (items && Array.isArray(items)) {
+      finalItems = [];
+
+      for (const item of items) {
+        // Validate product
+        const product = await Product.findById(item.productId);
+
+        if (!product) {
+          return res.json({
+            success: false,
+            statusCode: 404,
+            message: `Product not found: ${item.itemName}`,
+          });
+        }
+
+        const qty = Number(item.quantity);
+        const rate = Number(item.rate);
+        const mrp = Number(item.mrp);
+
+        if (!qty || qty < 1) {
+          return res.json({
+            success: false,
+            statusCode: 400,
+            message: `Invalid quantity for ${item.itemName}`,
+          });
+        }
+
+        if (rate < 0) {
+          return res.json({
+            success: false,
+            statusCode: 400,
+            message: `Invalid rate for ${item.itemName}`,
+          });
+        }
+
+        finalItems.push({
+          productId: product._id,
+          itemName: product.itemName,
+          mrp: product.mrp,
+          rate,
+          quantity: qty,
+        });
+      }
+    }
+
+    // Calculate total from items
+    const calculatedTotalValue = finalItems.reduce((total, item) => {
+      return total + Number(item.rate) * Number(item.quantity);
+    }, 0);
+
+    // Update vehicle
+    vehicle.items = finalItems;
+    vehicle.totalValue = calculatedTotalValue;
+
+    if (date) {
+      vehicle.date = date;
+    }
+
+    await vehicle.save();
+
+    res.json({
+      success: true,
+      statusCode: 200,
+      message: "Vehicle updated successfully",
+      data: vehicle,
+    });
+  } catch (error) {
+    console.error("Update Vehicle Error:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+
+      return res.json({
+        success: false,
+        statusCode: 400,
+        message: "Validation Error",
+        errors: messages,
+      });
+    }
+
+    res.json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
 
 
 // =============================
@@ -304,7 +313,7 @@ const deleteSale = async (req, res) => {
 // =============================
 const deleteAllSales = async (req, res) => {
     try {
-        const result = await Sale.deleteMany({});
+        const result = await Vehicle.deleteMany({});
 
         res.json({
             success: true,

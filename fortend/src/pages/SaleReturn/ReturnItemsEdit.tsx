@@ -27,6 +27,7 @@ import {
   ReceiptLong,
   Check as CheckIcon,
   Close as CloseIcon,
+  AssignmentReturn,
 } from "@mui/icons-material";
 
 // ===================== TYPES =====================
@@ -39,7 +40,7 @@ interface Product {
   unit: string;
 }
 
-interface SaleRow {
+interface ReturnRow {
   productId: string;
   itemName: string;
   mrp: number;
@@ -237,11 +238,11 @@ const InfoChip = styled(Box)(() => ({
 
 // ===================== MAIN COMPONENT =====================
 
-const SaleEdit: React.FC = () => {
+const ReturnItemsEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [saleDate, setSaleDate] = useState<string>("");
+  const [returnDate, setReturnDate] = useState<string>("");
 
   const [productSearch, setProductSearch] = useState<string>("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -251,11 +252,11 @@ const SaleEdit: React.FC = () => {
   const [currentQty, setCurrentQty] = useState<number>(1);
   const [currentRate, setCurrentRate] = useState<number>(0);
 
-  const [rows, setRows] = useState<SaleRow[]>([]);
+  const [rows, setRows] = useState<ReturnRow[]>([]);
 
   // ✏️ Row-level edit state
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-  const [editBuffer, setEditBuffer] = useState<SaleRow | null>(null);
+  const [editBuffer, setEditBuffer] = useState<ReturnRow | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -263,13 +264,16 @@ const SaleEdit: React.FC = () => {
   const searchRef = useRef<HTMLDivElement>(null);
 
   /* =====================================================
-  FETCH SALE
+  FETCH RETURN ITEM
   ===================================================== */
   useEffect(() => {
-    const fetchSale = async () => {
+    const fetchReturn = async () => {
       try {
         setFetchLoading(true);
-        const res = await axios.get(`${API_URL}/sale/${id}`, getAuthHeaders());
+        const res = await axios.get(
+          `${API_URL}/return-items/${id}`,
+          getAuthHeaders()
+        );
 
         if (res.data?.success === true) {
           const s = res.data.data || {};
@@ -277,15 +281,17 @@ const SaleEdit: React.FC = () => {
           if (s.date) {
             const d = new Date(s.date);
             if (!isNaN(d.getTime())) {
-              setSaleDate(d.toISOString().split("T")[0]);
+              setReturnDate(d.toISOString().split("T")[0]);
             }
           }
 
-          const mappedRows: SaleRow[] = (s.items || []).map((it: any) => {
+          const mappedRows: ReturnRow[] = (s.items || []).map((it: any) => {
             const qty = Number(it?.quantity) || 0;
             const rate = Number(it?.rate) || 0;
             const total =
-              Number(it?.totalAmount) > 0 ? Number(it.totalAmount) : qty * rate;
+              Number(it?.totalAmount) > 0
+                ? Number(it.totalAmount)
+                : qty * rate;
 
             return {
               productId:
@@ -310,18 +316,20 @@ const SaleEdit: React.FC = () => {
           localStorage.removeItem("erptoken");
           setTimeout(() => navigate("/login"), 1500);
         } else {
-          toast.error(error.response?.data?.message || "Failed to fetch sale");
+          toast.error(
+            error.response?.data?.message || "Failed to fetch return items"
+          );
         }
       } finally {
         setFetchLoading(false);
       }
     };
 
-    if (id) fetchSale();
+    if (id) fetchReturn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Outside click
+  // Outside click for product search
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -404,7 +412,7 @@ const SaleEdit: React.FC = () => {
   };
 
   /* =====================================================
-  ✏️ ROW EDIT — Start / Change / Save / Cancel
+  ✏️ ROW EDIT
   ===================================================== */
   const startEditRow = (index: number) => {
     setEditingRowIndex(index);
@@ -422,13 +430,10 @@ const SaleEdit: React.FC = () => {
   ) => {
     setEditBuffer((prev) => {
       if (!prev) return prev;
-      const updated: SaleRow = { ...prev, [field]: value };
-
-      // auto-recalc total
+      const updated: ReturnRow = { ...prev, [field]: value };
       const qty = Number(updated.quantity) || 0;
       const rate = Number(updated.rate) || 0;
       updated.totalAmount = qty * rate;
-
       return updated;
     });
   };
@@ -436,7 +441,6 @@ const SaleEdit: React.FC = () => {
   const saveEditRow = () => {
     if (editingRowIndex === null || !editBuffer) return;
 
-    // validation
     if (!editBuffer.itemName.trim()) {
       toast.error("Item name cannot be empty");
       return;
@@ -507,24 +511,24 @@ const SaleEdit: React.FC = () => {
           quantity: Number(r.quantity) || 0,
         })),
         totalValue: grandTotal,
-        date: saleDate,
+        date: returnDate,
       };
 
       const res = await axios.put(
-        `${API_URL}/sale/${id}`,
+        `${API_URL}/return-items/${id}`,
         payload,
         getAuthHeaders()
       );
 
       if (res.data.success === true) {
-        toast.success("Sale updated successfully! 🎉");
-        setTimeout(() => navigate("/load-items"), 1200);
+        toast.success("Return items updated successfully! 🎉");
+        setTimeout(() => navigate("/sale/return-list"), 1200);
       } else if (res.data.message === "Unauthorized") {
         toast.error("Session expired! Please login again");
         localStorage.removeItem("erptoken");
         setTimeout(() => navigate("/login"), 1500);
       } else {
-        toast.error(res.data?.message || "Failed to update sale");
+        toast.error(res.data?.message || "Failed to update return items");
       }
     } catch (error: any) {
       console.error(error);
@@ -535,7 +539,9 @@ const SaleEdit: React.FC = () => {
         localStorage.removeItem("erptoken");
         setTimeout(() => navigate("/login"), 1500);
       } else {
-        toast.error(error.response?.data?.message || "Failed to update sale");
+        toast.error(
+          error.response?.data?.message || "Failed to update return items"
+        );
       }
     } finally {
       setSaving(false);
@@ -543,7 +549,7 @@ const SaleEdit: React.FC = () => {
   };
 
   const handleCancel = () => {
-    navigate("/load-items");
+    navigate("/sale/return-list");
   };
 
   /* =====================================================
@@ -563,7 +569,9 @@ const SaleEdit: React.FC = () => {
         }}
       >
         <CircularProgress sx={{ color: "#fbbf24" }} />
-        <Typography sx={{ color: "#9ca3af" }}>Loading sale...</Typography>
+        <Typography sx={{ color: "#9ca3af" }}>
+          Loading return items...
+        </Typography>
       </Box>
     );
   }
@@ -669,7 +677,7 @@ const SaleEdit: React.FC = () => {
                       letterSpacing: 0.5,
                     }}
                   >
-                    EDIT LOAD ITEM
+                    EDIT RETURN ITEM
                   </Typography>
                 </Box>
               </Box>
@@ -681,12 +689,12 @@ const SaleEdit: React.FC = () => {
                 ID: {id?.slice(-8) || "—"}
               </InfoChip>
               <Box sx={{ width: { xs: "100%", sm: 180 } }}>
-                <FieldLabel>Sale Date</FieldLabel>
+                <FieldLabel>Return Date</FieldLabel>
                 <StyledTextField
                   fullWidth
                   type="date"
-                  value={saleDate}
-                  onChange={(e) => setSaleDate(e.target.value)}
+                  value={returnDate}
+                  onChange={(e) => setReturnDate(e.target.value)}
                   size="small"
                 />
               </Box>
@@ -883,7 +891,7 @@ const SaleEdit: React.FC = () => {
             }}
           >
             <Box display="flex" alignItems="center" gap={1}>
-              <ReceiptLong sx={{ color: "#fbbf24", fontSize: 18 }} />
+              <AssignmentReturn sx={{ color: "#fbbf24", fontSize: 18 }} />
               <Typography
                 sx={{
                   color: "#ffffff",
@@ -892,7 +900,7 @@ const SaleEdit: React.FC = () => {
                   letterSpacing: 0.5,
                 }}
               >
-                LOAD ITEMS LIST
+                RETURN ITEMS LIST
               </Typography>
             </Box>
             <Chip
@@ -953,7 +961,8 @@ const SaleEdit: React.FC = () => {
                 ) : (
                   rows.map((row, idx) => {
                     const isEditing = editingRowIndex === idx;
-                    const displayRow = isEditing && editBuffer ? editBuffer : row;
+                    const displayRow =
+                      isEditing && editBuffer ? editBuffer : row;
 
                     return (
                       <tr
@@ -1270,7 +1279,7 @@ const SaleEdit: React.FC = () => {
                 },
               }}
             >
-              {saving ? "Updating..." : "Update Invoice"}
+              {saving ? "Updating..." : "Update Return"}
             </Button>
           </Box>
         </FooterBar>
@@ -1279,4 +1288,4 @@ const SaleEdit: React.FC = () => {
   );
 };
 
-export default SaleEdit;
+export default ReturnItemsEdit;

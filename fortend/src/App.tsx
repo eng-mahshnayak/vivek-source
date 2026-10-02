@@ -46,6 +46,8 @@ import CustomerManagement from "./pages/CustomerManagement";
 import ProductTable from "./pages/ProductTable";
 import CustomerLedger from "./pages/CustomerLedger";
 import CustomerLedgerDetail from "./pages/CustomerLedgerDetail";
+import FinalCalculation from "./pages/FinalCalculation";
+import ReturnItemsEdit from "./pages/SaleReturn/ReturnItemsEdit";
 
 
 
@@ -78,7 +80,7 @@ function App() {
 
 <Route path="/return-items/create" element={<SaleReturnCreate />} />
 <Route path="/sale/return-list" element={<SaleReturnList />} />
-
+<Route path="/return-items/edit/:id" element={<ReturnItemsEdit />} />
             
 <Route path="/customer-ledger" element={<CustomerLedger />} />
 
@@ -98,6 +100,7 @@ function App() {
             />
             <Route path="note-summary-entry" element={<DailyCashSummery />} />
             <Route path="note-summary-entry/edit/:id" element={<DailyCashSummeryFromUpdate />} />
+<Route path="/final-calculation" element={<FinalCalculation />} />
 
             
           

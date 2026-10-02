@@ -40,7 +40,16 @@ const creditCustomerSchema = new mongoose.Schema(
       required: [true, "Date is required"],
       default: Date.now,
     },
-
+   paymentStatus: {
+    type: String,
+    enum: ["done", "partial", "remaining"],
+    default: "remaining"
+  },
+  remaingAmount:{
+    type: Number, 
+    required: true,
+    default:0
+  },
     // For future multi-user support
     createdBy: {
       type: String,

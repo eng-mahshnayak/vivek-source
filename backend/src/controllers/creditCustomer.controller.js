@@ -1,14 +1,24 @@
 const CreditCustomer = require("../models/creditCustomer.model");
-
+const Customerledger = require("../models/customerLedger.model")
 // =============================
 // CREATE CREDIT ENTRY
 // POST /api/credit-customer
 // =============================
 const createCreditEntry = async (req, res) => {
   try {
-    const { customerId, customerName, billNo, amount, remarks, date } = req.body;
+    const {
+      customerId,
+      customerName,
+      billNo,
+      amount,
+      remarks,
+      date,
+    } = req.body;
 
+    // =========================
     // Validation
+    // =========================
+
     if (!customerId) {
       return res.json({
         success: false,
@@ -16,6 +26,7 @@ const createCreditEntry = async (req, res) => {
         message: "Customer is required",
       });
     }
+
     if (!customerName || !customerName.trim()) {
       return res.json({
         success: false,
@@ -23,6 +34,7 @@ const createCreditEntry = async (req, res) => {
         message: "Customer name is required",
       });
     }
+
     if (!amount || Number(amount) <= 0) {
       return res.json({
         success: false,
@@ -31,32 +43,94 @@ const createCreditEntry = async (req, res) => {
       });
     }
 
+    const creditAmount = Number(amount);
+
+    // =========================
+    // Create Credit Entry
+    // =========================
+
     const creditEntry = await CreditCustomer.create({
       customerId,
       customerName: customerName.trim(),
       billNo: billNo?.trim() || "-",
-      amount: Number(amount),
+      amount: creditAmount,
+      remaingAmount: creditAmount,
       remarks: remarks?.trim() || "-",
       date: date ? new Date(date) : new Date(),
     });
 
-    // Populate customer on response
-    const populated = await CreditCustomer.findById(creditEntry._id).populate(
+    // =========================
+    // Find Customer Ledger
+    // =========================
+
+    let customerLedger = await Customerledger.findOne({
+      customerId,
+    });
+
+    // =========================
+    // Update Existing Ledger
+    // =========================
+
+    if (customerLedger) {
+      customerLedger.totalSellAmount =
+        Number(customerLedger.totalSellAmount || 0) + creditAmount;
+
+      customerLedger.balance =
+        Number(customerLedger.balance || 0) + creditAmount;
+
+      customerLedger.numberOfEntries =
+        Number(customerLedger.numberOfEntries || 0) + 1;
+
+      await customerLedger.save();
+    }
+
+    // =========================
+    // Create New Ledger
+    // =========================
+
+    else {
+      customerLedger = await Customerledger.create({
+        customerId,
+        customerName: customerName.trim(),
+        totalSellAmount: creditAmount,
+        totalRecievedAmount: 0,
+        balance: creditAmount,
+        numberOfEntries: 1,
+      });
+    }
+
+    // =========================
+    // Populate Credit Entry
+    // =========================
+
+    const populated = await CreditCustomer.findById(
+      creditEntry._id
+    ).populate(
       "customerId",
       "companyName displayName phone email"
     );
 
-    res.json({
+    // =========================
+    // Response
+    // =========================
+
+    return res.json({
       success: true,
       statusCode: 201,
       message: "Credit entry recorded successfully",
       data: populated,
+      ledger: customerLedger,
     });
+
   } catch (error) {
     console.error("Create Credit Entry Error:", error);
 
+    // Mongoose Validation Error
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err) => err.message);
+      const messages = Object.values(error.errors).map(
+        (err) => err.message
+      );
+
       return res.json({
         success: false,
         statusCode: 400,
@@ -65,14 +139,14 @@ const createCreditEntry = async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: false,
       statusCode: 500,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };
-
 // =============================
 // GET ALL CREDIT ENTRIES (with pagination & filters)
 // GET /api/credit-customer?page=1&limit=25&from=&to=&customerId=&search=

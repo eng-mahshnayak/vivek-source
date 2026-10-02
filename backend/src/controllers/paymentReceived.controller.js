@@ -1,37 +1,92 @@
+const mongoose = require("mongoose");
 const PaymentReceived = require("../models/paymentReceived.model");
+const Customerledger = require("../models/customerLedger.model");
+const CreditCustomer = require("../models/creditCustomer.model");
 
 // =============================
 // CREATE PAYMENT RECEIVED
 // POST /api/payment-received
 // =============================
 const createPayment = async (req, res) => {
-  try {
-    const { customerId, customerName, paymentMode, transactionRef, amount, date } =
-      req.body;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
+  try {
+    const {
+      customerId,
+      customerName,
+      paymentMode,
+      transactionRef,
+      amount,
+      date,
+      linkedInvoices,
+    } = req.body;
+
+    console.log(
+      req.body,
+      "================createPayment=============="
+    );
+
+    // =========================
+    // Normalize
+    // =========================
+
+    const invoices = Array.isArray(linkedInvoices)
+      ? linkedInvoices
+      : [];
+
+    const paymentAmount = Number(amount);
+
+    const paymentDate = date
+      ? new Date(date)
+      : new Date();
+
+    // YYYY-MM-DD
+    const paymentDateString = paymentDate
+      .toISOString()
+      .split("T")[0];
+
+    // =========================
     // Validation
+    // =========================
+
     if (!customerId) {
+      await session.abortTransaction();
+      session.endSession();
+
       return res.json({
         success: false,
         statusCode: 400,
         message: "Customer is required",
       });
     }
+
     if (!customerName || !customerName.trim()) {
+      await session.abortTransaction();
+      session.endSession();
+
       return res.json({
         success: false,
         statusCode: 400,
         message: "Customer name is required",
       });
     }
-    if (!amount || Number(amount) <= 0) {
+
+    if (!amount || paymentAmount <= 0) {
+      await session.abortTransaction();
+      session.endSession();
+
       return res.json({
         success: false,
         statusCode: 400,
         message: "Amount must be greater than 0",
       });
     }
+
     if (!paymentMode) {
+      await session.abortTransaction();
+      session.endSession();
+
       return res.json({
         success: false,
         statusCode: 400,
@@ -39,31 +94,404 @@ const createPayment = async (req, res) => {
       });
     }
 
-    const payment = await PaymentReceived.create({
-      customerId,
-      customerName: customerName.trim(),
-      paymentMode,
-      transactionRef: transactionRef?.trim() || "-",
-      amount: Number(amount),
-      date: date ? new Date(date) : new Date(),
-    });
+    // =========================
+    // Validate linked invoices
+    // =========================
 
-    const populated = await PaymentReceived.findById(payment._id).populate(
-      "customerId",
-      "companyName displayName phone email"
+    for (const invoice of invoices) {
+      if (!invoice.invoiceId) {
+        await session.abortTransaction();
+        session.endSession();
+
+        return res.json({
+          success: false,
+          statusCode: 400,
+          message: "Invoice ID is required",
+        });
+      }
+
+      if (!invoice.invoiceNumber) {
+        await session.abortTransaction();
+        session.endSession();
+
+        return res.json({
+          success: false,
+          statusCode: 400,
+          message: "Invoice number is required",
+        });
+      }
+
+      if (
+        invoice.linkedAmount === undefined ||
+        invoice.linkedAmount === null ||
+        Number(invoice.linkedAmount) <= 0
+      ) {
+        await session.abortTransaction();
+        session.endSession();
+
+        return res.json({
+          success: false,
+          statusCode: 400,
+          message: `Invalid linked amount for invoice ${invoice.invoiceNumber}`,
+        });
+      }
+    }
+
+    // =========================
+    // Payment classification
+    // =========================
+
+    let todayPayment = 0;
+    let previousPayment = 0;
+
+    // =====================================================
+    // CASE A:
+    // linkedInvoices manually selected
+    // =====================================================
+
+    if (invoices.length > 0) {
+      for (const invoice of invoices) {
+        let invoiceDate = invoice.invoiceDate;
+
+        // Agar frontend ne invoiceDate nahi bheji
+        // to database se lekar aao
+        if (!invoiceDate) {
+          const creditInvoice = await CreditCustomer.findById(
+            invoice.invoiceId
+          ).session(session);
+
+          if (creditInvoice) {
+            invoiceDate = creditInvoice.date;
+          }
+        }
+
+        const linkedAmount = Number(
+          invoice.linkedAmount || 0
+        );
+
+        if (invoiceDate) {
+          const invoiceDateString = new Date(invoiceDate)
+            .toISOString()
+            .split("T")[0];
+
+          if (invoiceDateString === paymentDateString) {
+            todayPayment += linkedAmount;
+          } else if (
+            invoiceDateString < paymentDateString
+          ) {
+            previousPayment += linkedAmount;
+          }
+        }
+      }
+    }
+
+    // =====================================================
+    // CASE B:
+    // linkedInvoices empty
+    // FIFO auto-distribute
+    // =====================================================
+
+    else {
+      let remainingToDistribute = paymentAmount;
+
+      const pendingInvoices = await CreditCustomer.find({
+        customerId,
+        paymentStatus: { $ne: "done" },
+        remaingAmount: { $gt: 0 },
+      })
+        .sort({
+          date: 1,
+          createdAt: 1,
+        })
+        .session(session);
+
+      for (const inv of pendingInvoices) {
+        if (remainingToDistribute <= 0) {
+          break;
+        }
+
+        const currentRemaining = Number(
+          inv.remaingAmount || 0
+        );
+
+        const deductAmount = Math.min(
+          remainingToDistribute,
+          currentRemaining
+        );
+
+        const newRemaining =
+          currentRemaining - deductAmount;
+
+        // =========================
+        // Payment date classification
+        // =========================
+
+        const invoiceDateString = new Date(inv.date)
+          .toISOString()
+          .split("T")[0];
+
+        if (invoiceDateString === paymentDateString) {
+          todayPayment += deductAmount;
+        } else if (
+          invoiceDateString < paymentDateString
+        ) {
+          previousPayment += deductAmount;
+        }
+
+        // =========================
+        // Update invoice
+        // =========================
+
+        inv.remaingAmount = newRemaining;
+
+        if (newRemaining === 0) {
+          inv.paymentStatus = "done";
+        } else if (
+          newRemaining < Number(inv.amount || 0)
+        ) {
+          inv.paymentStatus = "partial";
+        } else {
+          inv.paymentStatus = "remaining";
+        }
+
+        await inv.save({ session });
+
+        remainingToDistribute -= deductAmount;
+      }
+
+      // Advance payment
+      if (remainingToDistribute > 0) {
+        console.warn(
+          `Extra amount ${remainingToDistribute} credited as advance for customer ${customerId}`
+        );
+
+        // Agar koi invoice nahi mila ya payment extra hai,
+        // ise current payment maana ja sakta hai.
+        todayPayment += remainingToDistribute;
+      }
+    }
+
+    // =========================
+    // Create Payment
+    // =========================
+
+    const payment = await PaymentReceived.create(
+      [
+        {
+          customerName: customerName.trim(),
+
+          customerId,
+
+          paymentMode,
+
+          amount: paymentAmount,
+
+          date: paymentDate,
+
+          todayPayment,
+
+          previousPayment,
+
+          linkedInvoices: invoices.map((invoice) => ({
+            invoiceId: invoice.invoiceId,
+
+            invoiceNumber: invoice.invoiceNumber,
+
+            linkedAmount: Number(
+              invoice.linkedAmount
+            ),
+          })),
+
+          remark: transactionRef?.trim() || "-",
+        },
+      ],
+      { session }
     );
 
-    res.json({
+    // =========================
+    // Update Customer Ledger
+    // =========================
+
+    let ledger = await Customerledger.findOne({
+      customerId,
+    }).session(session);
+
+    if (!ledger) {
+      const credits = await CreditCustomer.find({
+        customerId,
+      }).session(session);
+
+      const totalSellAmount = credits.reduce(
+        (sum, c) =>
+          sum + Number(c.amount || 0),
+        0
+      );
+
+      ledger = await Customerledger.create(
+        [
+          {
+            customerId,
+
+            customerName: customerName.trim(),
+
+            totalSellAmount,
+
+            totalRecievedAmount: paymentAmount,
+
+            balance:
+              totalSellAmount -
+              paymentAmount,
+
+            numberOfEntries: 1,
+          },
+        ],
+        { session }
+      );
+
+      ledger = ledger[0];
+    } else {
+      ledger.totalRecievedAmount =
+        Number(
+          ledger.totalRecievedAmount || 0
+        ) + paymentAmount;
+
+      ledger.balance =
+        Number(
+          ledger.totalSellAmount || 0
+        ) -
+        Number(
+          ledger.totalRecievedAmount || 0
+        );
+
+      ledger.numberOfEntries =
+        Number(
+          ledger.numberOfEntries || 0
+        ) + 1;
+
+      ledger.customerName =
+        customerName.trim();
+
+      await ledger.save({ session });
+    }
+
+    // =========================
+    // Update manually linked invoices
+    // =========================
+
+    if (invoices.length > 0) {
+      for (const invoice of invoices) {
+        const creditInvoice =
+          await CreditCustomer.findById(
+            invoice.invoiceId
+          ).session(session);
+
+        if (!creditInvoice) {
+          console.warn(
+            `Credit invoice not found: ${invoice.invoiceId}`
+          );
+
+          continue;
+        }
+
+        const linkedAmt = Number(
+          invoice.linkedAmount
+        );
+
+        const currentRemaining =
+          Number(
+            creditInvoice.remaingAmount || 0
+          );
+
+        const newRemaining = Math.max(
+          0,
+          currentRemaining - linkedAmt
+        );
+
+        creditInvoice.remaingAmount =
+          newRemaining;
+
+        if (newRemaining === 0) {
+          creditInvoice.paymentStatus =
+            "done";
+        } else if (
+          newRemaining <
+          Number(creditInvoice.amount || 0)
+        ) {
+          creditInvoice.paymentStatus =
+            "partial";
+        } else {
+          creditInvoice.paymentStatus =
+            "remaining";
+        }
+
+        await creditInvoice.save({
+          session,
+        });
+      }
+    }
+
+    // =========================
+    // Commit
+    // =========================
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // =========================
+    // Fetch created payment
+    // =========================
+
+    const populated =
+      await PaymentReceived.findById(
+        payment[0]._id
+      );
+
+    // =========================
+    // Response
+    // =========================
+
+    return res.json({
       success: true,
+
       statusCode: 201,
-      message: "Payment received logged successfully",
+
+      message:
+        invoices.length > 0
+          ? "Payment received logged & invoices updated"
+          : "Payment received logged & applied to pending invoices (FIFO)",
+
       data: populated,
+
+      ledger: {
+        totalSellAmount:
+          ledger.totalSellAmount,
+
+        totalRecievedAmount:
+          ledger.totalRecievedAmount,
+
+        balance:
+          ledger.balance,
+
+        numberOfEntries:
+          ledger.numberOfEntries,
+      },
     });
   } catch (error) {
-    console.error("Create Payment Error:", error);
+    await session.abortTransaction();
+    session.endSession();
 
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err) => err.message);
+    console.error(
+      "Create Payment Error:",
+      error
+    );
+
+    if (
+      error.name === "ValidationError"
+    ) {
+      const messages = Object.values(
+        error.errors
+      ).map((err) => err.message);
+
       return res.json({
         success: false,
         statusCode: 400,
@@ -72,13 +500,16 @@ const createPayment = async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: false,
       statusCode: 500,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };
+
+
 
 // =============================
 // GET ALL PAYMENTS (with pagination & filters)
@@ -90,7 +521,7 @@ const getAllPayments = async (req, res) => {
     const limit = parseInt(req.query.limit) || 25;
     const skip = (page - 1) * limit;
 
-    const { from, to, paymentMode, customerId, search } = req.query;
+    const { from, to, paymentMode, search } = req.query;
 
     let filter = {};
 
@@ -110,11 +541,7 @@ const getAllPayments = async (req, res) => {
       filter.paymentMode = paymentMode;
     }
 
-    // Specific customer
-    if (customerId) {
-      filter.customerId = customerId;
-    }
-
+    
     // Search
     if (search && search.trim() !== "") {
       const searchRegex = new RegExp(search.trim(), "i");
@@ -125,8 +552,6 @@ const getAllPayments = async (req, res) => {
     }
 
     const payments = await PaymentReceived.find(filter)
-      .populate("customerId", "companyName displayName phone email")
-      .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
