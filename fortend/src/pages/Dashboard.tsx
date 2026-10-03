@@ -884,7 +884,7 @@ const Dashboard: React.FC = () => {
       icon: <Visibility />,
       iconBg: "#0f2f2c",
       iconColor: "#2dd4bf",
-      route: "/final-calculation",
+      route: "/view-settlement",
     },
     {
       id: "9",

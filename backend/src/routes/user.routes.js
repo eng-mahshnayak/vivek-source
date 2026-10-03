@@ -1,7 +1,7 @@
 const express = require('express');
 const { signup, signin, forgotPassword, verifyOTP, resetPassword, signupMain } = require('../controllers/auth.controller');
 const { getAllUsers, deleteUser, deleteAllUsers, updateUser } = require('../controllers/user.controller');
-const { getTodayeData } = require('../controllers/finalcaculation.controller');
+const { getTodayeData, viewSettlement } = require('../controllers/finalcaculation.controller');
 
 const router = express.Router();
 
@@ -25,7 +25,8 @@ router.put('/update/:id', updateUser);
 // router.post('/logout', logout);
 
 
-
+// ✅ NEW
+router.get("/viewsettlement", viewSettlement);
 
 router.get('/gettodaycalculation', getTodayeData);
 

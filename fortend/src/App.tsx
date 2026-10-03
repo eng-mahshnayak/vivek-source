@@ -30,6 +30,7 @@ import CustomerLedgerDetail from "./pages/CustomerLedgerDetail";
 import FinalCalculation from "./pages/FinalCalculation";
 import ReturnItemsEdit from "./pages/SaleReturn/ReturnItemsEdit";
 import RouteDirectionSale from "./pages/RouteDirectionSale";
+import ViewSettlement from "./pages/ViewSettlement";
 
 
 
@@ -79,10 +80,12 @@ function App() {
             <Route path="note-summary-entry/edit/:id" element={<DailyCashSummeryFromUpdate />} />
 <Route path="/final-calculation" element={<FinalCalculation />} />
 
+<Route path="/view-settlement" element={<ViewSettlement />} />
+
             
           
 
-         
+        
 
            
           
