@@ -2002,6 +2002,7 @@
 
 
 
+
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -2069,6 +2070,7 @@ const DarkBanner = styled(Box)(() => ({
   flexShrink: 0,
 }));
 
+/* ✅ FormCard — mobile pe khud scroll ho jaaye */
 const FormCard = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
@@ -2128,7 +2130,6 @@ const FieldLabel = styled(Typography)(() => ({
   marginBottom: "8px",
 }));
 
-// Table container with flex chain
 const TableContainerDark = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
@@ -2157,6 +2158,7 @@ const TableScrollArea = styled(Box)(() => ({
 
 const ItemsTable = styled("table")(() => ({
   width: "100%",
+  minWidth: "720px",
   borderCollapse: "collapse",
   "& thead": {
     backgroundColor: "#111827",
@@ -2170,7 +2172,7 @@ const ItemsTable = styled("table")(() => ({
     fontSize: "0.7rem",
     textTransform: "uppercase",
     letterSpacing: "0.8px",
-    padding: "16px 12px",
+    padding: "14px 12px",
     borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
     textAlign: "left",
     whiteSpace: "nowrap",
@@ -2186,8 +2188,9 @@ const ItemsTable = styled("table")(() => ({
   "& tbody td": {
     color: "#e5e7eb",
     fontSize: "0.85rem",
-    padding: "14px 12px",
+    padding: "12px",
     textAlign: "left",
+    whiteSpace: "nowrap",
   },
 }));
 
@@ -2228,7 +2231,6 @@ const ReturnItemsEntry: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
-  // ✅ Flag: product select hone ke baad search skip karne ke liye
   const justSelectedRef = useRef(false);
 
   // ============== Outside click handler ==============
@@ -2244,7 +2246,6 @@ const ReturnItemsEntry: React.FC = () => {
 
   // ============== Search products ==============
   useEffect(() => {
-    // ✅ Agar abhi select hua hai to search skip karo
     if (justSelectedRef.current) {
       justSelectedRef.current = false;
       return;
@@ -2277,13 +2278,13 @@ const ReturnItemsEntry: React.FC = () => {
 
   // ============== Select product ==============
   const handleSelectProduct = (p: Product) => {
-    justSelectedRef.current = true; // ✅ search effect skip karne ke liye
+    justSelectedRef.current = true;
     setSelectedProduct(p);
     setProductSearch(p.itemName);
     setMrp(p.mrp || "");
     setRate(p.rate || "");
-    setSearchResults([]); // ✅ purane results clear
-    setShowSearchResults(false); // ✅ dropdown band
+    setSearchResults([]);
+    setShowSearchResults(false);
   };
 
   // ============== Live return amount ==============
@@ -2321,8 +2322,7 @@ const ReturnItemsEntry: React.FC = () => {
       },
     ]);
 
-    // Reset
-    justSelectedRef.current = true; // ✅ reset ke baad bhi skip
+    justSelectedRef.current = true;
     setSelectedProduct(null);
     setProductSearch("");
     setMrp("");
@@ -2403,8 +2403,9 @@ const ReturnItemsEntry: React.FC = () => {
   return (
     <Box
       sx={{
-        height: "85vh",
-        maxHeight: "100vh",
+        // ✅ FIX: page never scrolls
+        height: { xs: "100dvh", md: "100vh" },
+        maxHeight: { xs: "100dvh", md: "100vh" },
         overflow: "hidden",
         bgcolor: "#090d16",
         px: { xs: 1.5, sm: 2, md: 3 },
@@ -2521,11 +2522,11 @@ const ReturnItemsEntry: React.FC = () => {
             </Typography>
           </Box>
 
-          {/* Form Grid */}
+          {/* Form Grid — ✅ integer md values */}
           <Grid container spacing={2} alignItems="flex-end">
             {/* ITEM NAME */}
             <Grid
-              size={{ xs: 12, md: 3.2 }}
+              size={{ xs: 12, sm: 12, md: 4 }}
               ref={searchRef}
               sx={{ position: "relative" }}
             >
@@ -2540,7 +2541,6 @@ const ReturnItemsEntry: React.FC = () => {
                   if (selectedProduct) setSelectedProduct(null);
                 }}
                 onFocus={() => {
-                  // ✅ Sirf tab dropdown kholo jab kuch type kiya ho aur results ho
                   if (
                     !selectedProduct &&
                     productSearch.trim() &&
@@ -2654,7 +2654,7 @@ const ReturnItemsEntry: React.FC = () => {
             </Grid>
 
             {/* MRP */}
-            <Grid size={{ xs: 6, md: 1.45 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 1 }}>
               <FieldLabel>MRP (₹)</FieldLabel>
 
               <StyledTextField
@@ -2670,7 +2670,7 @@ const ReturnItemsEntry: React.FC = () => {
             </Grid>
 
             {/* RATE */}
-            <Grid size={{ xs: 6, md: 1.45 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 1 }}>
               <FieldLabel>Rate (₹)</FieldLabel>
 
               <StyledTextField
@@ -2686,8 +2686,8 @@ const ReturnItemsEntry: React.FC = () => {
             </Grid>
 
             {/* QTY */}
-            <Grid size={{ xs: 6, md: 1.45 }}>
-              <FieldLabel>Qty Returned</FieldLabel>
+            <Grid size={{ xs: 6, sm: 6, md: 1 }}>
+              <FieldLabel>Qty</FieldLabel>
 
               <StyledTextField
                 fullWidth
@@ -2702,7 +2702,7 @@ const ReturnItemsEntry: React.FC = () => {
             </Grid>
 
             {/* RETURN AMOUNT */}
-            <Grid size={{ xs: 6, md: 1.7 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 2 }}>
               <FieldLabel>Return Amount</FieldLabel>
 
               <Box
@@ -2735,7 +2735,7 @@ const ReturnItemsEntry: React.FC = () => {
             </Grid>
 
             {/* RETURN DATE */}
-            <Grid size={{ xs: 12, md: 2.75 }}>
+            <Grid size={{ xs: 12, sm: 12, md: 3 }}>
               <FieldLabel>Return Date *</FieldLabel>
 
               <StyledTextField
@@ -2780,7 +2780,6 @@ const ReturnItemsEntry: React.FC = () => {
 
         {/* ================= RETURNED ITEMS SHEET (SCROLLABLE) ================= */}
         <TableContainerDark>
-          {/* Header */}
           <Box
             display="flex"
             justifyContent="space-between"
@@ -2816,7 +2815,6 @@ const ReturnItemsEntry: React.FC = () => {
             />
           </Box>
 
-          {/* Scroll Area */}
           <TableScrollArea>
             <ItemsTable>
               <thead>

@@ -16,7 +16,7 @@ const creditCustomerRoutes = require("./src/routes/creditCustomer.route.js");
 const paymentReceivedRoutes = require("./src/routes/paymentReceived.route.js");
 const expenseRoutes = require("./src/routes/expense.route.js");
 const customerLedgerRoutes = require("./src/routes/customerLedger.routes.js");
-
+const routeDirectionSaleRoutes = require("./src/routes/routeDirectionSaleRoutes.js");
 require('dotenv').config(); 
 
 
@@ -77,6 +77,8 @@ app.use("/api/expense", expenseRoutes);
 
 
 
+
+app.use("/api/route-direction-sale", routeDirectionSaleRoutes);
 app.use("/api/customer-ledger", customerLedgerRoutes);
 
 

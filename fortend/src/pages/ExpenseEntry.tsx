@@ -1,7 +1,9 @@
 
 
 
-// import React, { useEffect, useState } from "react";
+
+
+// import React, { useEffect, useState, useMemo } from "react";
 // import { useNavigate } from "react-router-dom";
 // import axios from "axios";
 // import toast from "react-hot-toast";
@@ -39,6 +41,9 @@
 //   Clear as ClearIcon,
 //   Close as CloseIcon,
 //   Lock as LockIcon,
+//   AccountBalanceWallet,
+//   Functions,
+//   Category as CategoryIcon,
 // } from "@mui/icons-material";
 
 // // ===================== TYPES =====================
@@ -102,6 +107,45 @@
 //   marginBottom: "16px",
 //   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
 //   flexShrink: 0,
+// }));
+
+// /* ===== NEW: Analytical Summary Bar ===== */
+// const AnalyticsBar = styled(Box)(() => ({
+//   backgroundColor: "#0d1527",
+//   borderRadius: "16px",
+//   border: "1px solid rgba(244, 63, 94, 0.25)",
+//   padding: "16px 20px",
+//   marginBottom: "16px",
+//   boxShadow: "0 8px 24px rgba(244, 63, 94, 0.08)",
+//   flexShrink: 0,
+//   position: "relative",
+//   overflow: "hidden",
+//   "&::before": {
+//     content: '""',
+//     position: "absolute",
+//     top: 0,
+//     left: 0,
+//     right: 0,
+//     height: "2px",
+//     background:
+//       "linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.6), transparent)",
+//   },
+// }));
+
+// const StatCard = styled(Box)<{ accent: string }>(({ accent }) => ({
+//   backgroundColor: "#111827",
+//   borderRadius: "12px",
+//   border: `1px solid ${accent}22`,
+//   padding: "12px 14px",
+//   display: "flex",
+//   alignItems: "center",
+//   gap: "12px",
+//   transition: "all 0.25s ease",
+//   "&:hover": {
+//     transform: "translateY(-2px)",
+//     borderColor: `${accent}66`,
+//     boxShadow: `0 8px 20px ${accent}22`,
+//   },
 // }));
 
 // const StyledTextField = styled(TextField)(() => ({
@@ -229,6 +273,12 @@
 //     .split("T")[0];
 // };
 
+// const formatMoney = (n: number) =>
+//   `₹ ${(Number(n) || 0).toLocaleString("en-IN", {
+//     minimumFractionDigits: 0,
+//     maximumFractionDigits: 2,
+//   })}`;
+
 // // ===================== MAIN =====================
 
 // const ExpenseEntry: React.FC = () => {
@@ -238,8 +288,6 @@
 //   const [listLoading, setListLoading] = useState(true);
 //   const [grandTotal, setGrandTotal] = useState(0);
 //   const [saving, setSaving] = useState(false);
-
-//   console.log(grandTotal);
 
 //   // Pagination
 //   const [page, setPage] = useState(1);
@@ -261,7 +309,7 @@
 //   const [description, setDescription] = useState("");
 //   const [paidVia, setPaidVia] = useState(PAYMENT_METHODS[0]);
 //   const [amount, setAmount] = useState<number | "">("");
-//   const [expenseDate, setExpenseDate] = useState<string>(todayStr()); // ✅ NEW
+//   const [expenseDate, setExpenseDate] = useState<string>(todayStr());
 
 //   // Edit mode
 //   const [editingId, setEditingId] = useState<string | null>(null);
@@ -287,7 +335,14 @@
 
 //       if (res.data?.success === true) {
 //         setExpenses(res.data.data || []);
-//         setGrandTotal(res.data.grandTotal || 0);
+
+//         const gt =
+//           res.data.grandTotal ??
+//           res.data.totalAmount ??
+//           res.data.totalSum ??
+//           res.data.totalExpenses ??
+//           0;
+//         setGrandTotal(Number(gt) || 0);
 
 //         const count =
 //           res.data.totalCount ??
@@ -326,13 +381,65 @@
 //     // eslint-disable-next-line react-hooks/exhaustive-deps
 //   }, [page, limit, appliedFrom, appliedTo]);
 
+//   // ===================== ✅ ANALYTICS (Derived) =====================
+//   const analytics = useMemo(() => {
+//     const pageCount = expenses.length;
+
+//     const pageSum = expenses.reduce(
+//       (s, e) => s + (Number(e.amount) || 0),
+//       0
+//     );
+
+//     const total = grandTotal > 0 ? grandTotal : pageSum;
+
+//     const avgPerEntry =
+//       totalCount > 0
+//         ? total / totalCount
+//         : pageCount > 0
+//         ? total / pageCount
+//         : 0;
+
+//     // Top category (based on current page)
+//     const catMap = new Map<string, number>();
+//     expenses.forEach((e) => {
+//       const c = String(e.category || "Other");
+//       catMap.set(c, (catMap.get(c) || 0) + (Number(e.amount) || 0));
+//     });
+//     let topCategory = "—";
+//     let topCategoryAmount = 0;
+//     catMap.forEach((val, key) => {
+//       if (val > topCategoryAmount) {
+//         topCategoryAmount = val;
+//         topCategory = key;
+//       }
+//     });
+
+//     // Today's expense (from current page)
+//     const today = todayStr();
+//     const todayTotal = expenses
+//       .filter((e) => {
+//         const d = new Date(e.date || e.createdAt);
+//         return d.toISOString().split("T")[0] === today;
+//       })
+//       .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+//     return {
+//       total,
+//       count: totalCount || pageCount,
+//       avgPerEntry,
+//       topCategory,
+//       topCategoryAmount,
+//       todayTotal,
+//     };
+//   }, [expenses, grandTotal, totalCount]);
+
 //   // ===================== FORM HANDLERS =====================
 //   const resetForm = () => {
 //     setCategory(EXPENSE_CATEGORIES[0]);
 //     setDescription("");
 //     setPaidVia(PAYMENT_METHODS[0]);
 //     setAmount("");
-//     setExpenseDate(todayStr()); // ✅ reset date to today
+//     setExpenseDate(todayStr());
 //     setEditingId(null);
 //   };
 
@@ -421,11 +528,10 @@
 //         description: description.trim(),
 //         paidVia,
 //         amount: Number(amount),
-//         date: expenseDate, // ✅ user-selected date
+//         date: expenseDate,
 //       };
 
 //       if (editingId) {
-//         // ---------- UPDATE ----------
 //         const res = await axios.put(
 //           `${API_URL}/expense/${editingId}`,
 //           payload,
@@ -448,7 +554,6 @@
 //           );
 //         }
 //       } else {
-//         // ---------- CREATE ----------
 //         const res = await axios.post(
 //           `${API_URL}/expense`,
 //           payload,
@@ -500,7 +605,6 @@
 //     setPaidVia(expense.paidVia);
 //     setAmount(expense.amount);
 
-//     // ✅ Date ko YYYY-MM-DD format me load karo
 //     const d = expense.date || expense.createdAt;
 //     const formatted = d ? new Date(d).toISOString().split("T")[0] : todayStr();
 //     setExpenseDate(formatted);
@@ -664,7 +768,6 @@
 //             </Box>
 
 //             <Box display="flex" gap={1.5} alignItems="center" flexWrap="wrap">
-//               {/* EXPENSE ENTRY BUTTON — Refresh ke LEFT */}
 //               <Button
 //                 variant="contained"
 //                 startIcon={<AddIcon />}
@@ -739,6 +842,220 @@
 //             </Box>
 //           </Box>
 //         </DarkBanner>
+
+//         {/* ================= ANALYTICAL SUMMARY BAR (NEW) ================= */}
+//         <AnalyticsBar>
+//           <Grid container spacing={1.5}>
+//             {/* TOTAL EXPENSES */}
+//             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+//               <StatCard accent="#f43f5e">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(244, 63, 94, 0.15)",
+//                     color: "#f43f5e",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <AccountBalanceWallet sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Total Expenses{hasDateFilter ? " (Filtered)" : ""}
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#f43f5e",
+//                       fontWeight: 900,
+//                       fontSize: { xs: "1.05rem", sm: "1.2rem" },
+//                       mt: 0.3,
+//                       letterSpacing: 0.3,
+//                       textShadow: "0 0 14px rgba(244, 63, 94, 0.4)",
+//                       lineHeight: 1.1,
+//                     }}
+//                   >
+//                     {listLoading ? "..." : formatMoney(analytics.total)}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+
+//             {/* TOTAL ENTRIES */}
+//             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+//               <StatCard accent="#c084fc">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(192, 132, 252, 0.15)",
+//                     color: "#c084fc",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <Receipt sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Total Entries
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#c084fc",
+//                       fontWeight: 900,
+//                       fontSize: { xs: "1.05rem", sm: "1.2rem" },
+//                       mt: 0.3,
+//                       letterSpacing: 0.3,
+//                       lineHeight: 1.1,
+//                     }}
+//                   >
+//                     {listLoading ? "..." : analytics.count}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+
+//             {/* TOP CATEGORY */}
+//             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+//               <StatCard accent="#fbbf24">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(251, 191, 36, 0.15)",
+//                     color: "#fbbf24",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <CategoryIcon sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Top Category
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#fbbf24",
+//                       fontWeight: 900,
+//                       fontSize: "0.9rem",
+//                       mt: 0.3,
+//                       letterSpacing: 0.2,
+//                       lineHeight: 1.2,
+//                       overflow: "hidden",
+//                       textOverflow: "ellipsis",
+//                       whiteSpace: "nowrap",
+//                     }}
+//                     title={analytics.topCategory}
+//                   >
+//                     {listLoading ? "..." : analytics.topCategory}
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 600,
+//                       mt: 0.2,
+//                     }}
+//                   >
+//                     {formatMoney(analytics.topCategoryAmount)}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+
+//             {/* AVG / ENTRY */}
+//             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+//               <StatCard accent="#38bdf8">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(56, 189, 248, 0.15)",
+//                     color: "#38bdf8",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <Functions sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Avg / Entry
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#38bdf8",
+//                       fontWeight: 900,
+//                       fontSize: { xs: "1.05rem", sm: "1.2rem" },
+//                       mt: 0.3,
+//                       letterSpacing: 0.3,
+//                       lineHeight: 1.1,
+//                     }}
+//                   >
+//                     {listLoading ? "..." : formatMoney(analytics.avgPerEntry)}
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 600,
+//                       mt: 0.2,
+//                     }}
+//                   >
+//                     Today: {formatMoney(analytics.todayTotal)}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+//           </Grid>
+//         </AnalyticsBar>
 
 //         {/* ================= DATE FILTER BAR ================= */}
 //         <FilterBar>
@@ -876,7 +1193,6 @@
 
 //         {/* ================= LOG SHEET ================= */}
 //         <TableContainerDark>
-//           {/* Header (fixed) */}
 //           <Box
 //             display="flex"
 //             justifyContent="space-between"
@@ -912,7 +1228,6 @@
 //             />
 //           </Box>
 
-//           {/* Scroll Area — SIRF YAHAN SCROLL HOGA */}
 //           <TableScrollArea>
 //             <ItemsTable>
 //               <thead>
@@ -1063,7 +1378,7 @@
 //             </ItemsTable>
 //           </TableScrollArea>
 
-//           {/* ================= PAGINATION BAR (fixed) ================= */}
+//           {/* ================= PAGINATION BAR ================= */}
 //           <Box
 //             sx={{
 //               display: "flex",
@@ -1258,7 +1573,6 @@
 
 //         <DialogContent sx={{ p: 3 }}>
 //           <Grid container spacing={2}>
-//             {/* CATEGORY */}
 //             <Grid size={{ xs: 12, sm: 6 }}>
 //               <FieldLabel>Expense Category</FieldLabel>
 //               <StyledSelect
@@ -1290,7 +1604,6 @@
 //               </StyledSelect>
 //             </Grid>
 
-//             {/* PAID VIA */}
 //             <Grid size={{ xs: 12, sm: 6 }}>
 //               <FieldLabel>Payment By</FieldLabel>
 //               <StyledSelect
@@ -1322,7 +1635,6 @@
 //               </StyledSelect>
 //             </Grid>
 
-//             {/* DESCRIPTION */}
 //             <Grid size={{ xs: 12, sm: 8 }}>
 //               <FieldLabel>Description / Reason *</FieldLabel>
 //               <StyledTextField
@@ -1333,7 +1645,6 @@
 //               />
 //             </Grid>
 
-//             {/* AMOUNT */}
 //             <Grid size={{ xs: 12, sm: 4 }}>
 //               <FieldLabel>Amount (₹) *</FieldLabel>
 //               <StyledTextField
@@ -1348,7 +1659,6 @@
 //               />
 //             </Grid>
 
-//             {/* ✅ DATE — NEW FIELD */}
 //             <Grid size={{ xs: 12, sm: 6 }}>
 //               <FieldLabel>Expense Date *</FieldLabel>
 //               <StyledTextField
@@ -1356,7 +1666,7 @@
 //                 type="date"
 //                 value={expenseDate}
 //                 onChange={(e) => setExpenseDate(e.target.value)}
-//                 inputProps={{ max: todayStr() }} // future date block (optional)
+//                 inputProps={{ max: todayStr() }}
 //               />
 //             </Grid>
 //           </Grid>
@@ -1544,7 +1854,6 @@
 
 
 
-
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -1586,6 +1895,7 @@ import {
   AccountBalanceWallet,
   Functions,
   Category as CategoryIcon,
+  FiberManualRecord,
 } from "@mui/icons-material";
 
 // ===================== TYPES =====================
@@ -1629,14 +1939,27 @@ const getAuthHeaders = () => ({
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
+const firstOfMonthStr = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+    .toISOString()
+    .split("T")[0];
+};
+
+const formatMoney = (n: number) =>
+  `₹ ${(Number(n) || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+
 // ===================== STYLED =====================
 
 const DarkBanner = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
   border: "1px solid rgba(255, 255, 255, 0.08)",
-  padding: "20px 24px",
-  marginBottom: "16px",
+  padding: "16px 18px",
+  marginBottom: "14px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
   flexShrink: 0,
 }));
@@ -1645,19 +1968,18 @@ const FilterBar = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
   border: "1px solid rgba(255, 255, 255, 0.08)",
-  padding: "14px 20px",
-  marginBottom: "16px",
+  padding: "16px 18px",
+  marginBottom: "14px",
   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
   flexShrink: 0,
 }));
 
-/* ===== NEW: Analytical Summary Bar ===== */
 const AnalyticsBar = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
   border: "1px solid rgba(244, 63, 94, 0.25)",
-  padding: "16px 20px",
-  marginBottom: "16px",
+  padding: "16px 18px",
+  marginBottom: "14px",
   boxShadow: "0 8px 24px rgba(244, 63, 94, 0.08)",
   flexShrink: 0,
   position: "relative",
@@ -1682,6 +2004,7 @@ const StatCard = styled(Box)<{ accent: string }>(({ accent }) => ({
   display: "flex",
   alignItems: "center",
   gap: "12px",
+  height: "100%",
   transition: "all 0.25s ease",
   "&:hover": {
     transform: "translateY(-2px)",
@@ -1690,13 +2013,37 @@ const StatCard = styled(Box)<{ accent: string }>(({ accent }) => ({
   },
 }));
 
+/* Quick filter chip */
+const QuickFilterChip = styled(Button)<{ active?: boolean }>(
+  ({ active }) => ({
+    borderRadius: "10px",
+    textTransform: "none",
+    fontWeight: 700,
+    fontSize: "0.75rem",
+    padding: "8px 18px",
+    minWidth: "auto",
+    whiteSpace: "nowrap",
+    backgroundColor: active ? "#f43f5e" : "rgba(244, 63, 94, 0.15)",
+    color: active ? "#0d1527" : "#f43f5e",
+    border: active
+      ? "1px solid #f43f5e"
+      : "1px solid rgba(244, 63, 94, 0.3)",
+    boxShadow: active ? "0 4px 14px rgba(244, 63, 94, 0.35)" : "none",
+    transition: "all 0.2s ease",
+    "&:hover": {
+      backgroundColor: active ? "#e11d48" : "rgba(244, 63, 94, 0.25)",
+      borderColor: "#f43f5e",
+    },
+  })
+);
+
 const StyledTextField = styled(TextField)(() => ({
   "& .MuiOutlinedInput-root": {
     borderRadius: "10px",
     backgroundColor: "#090d16",
     color: "#ffffff",
-    height: "42px",
-    "& fieldset": { borderColor: "rgba(255, 255, 255, 0.1)" },
+    height: "44px",
+    "& fieldset": { borderColor: "rgba(255, 255, 255, 0.12)" },
     "&:hover fieldset": { borderColor: "rgba(244, 63, 94, 0.4)" },
     "&.Mui-focused fieldset": {
       borderColor: "#f43f5e",
@@ -1713,6 +2060,11 @@ const StyledTextField = styled(TextField)(() => ({
   "& input[type='date']::-webkit-calendar-picker-indicator": {
     filter: "invert(0.7)",
     cursor: "pointer",
+  },
+  "& .MuiInputLabel-root": {
+    color: "#9ca3af",
+    fontSize: "0.8rem",
+    "&.Mui-focused": { color: "#f43f5e" },
   },
 }));
 
@@ -1746,6 +2098,7 @@ const FieldLabel = styled(Typography)(() => ({
   marginBottom: "8px",
 }));
 
+/* ✅ minHeight do */
 const TableContainerDark = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
@@ -1756,13 +2109,16 @@ const TableContainerDark = styled(Box)(() => ({
   display: "flex",
   flexDirection: "column",
   flex: 1,
-  minHeight: 0,
+  minHeight: "400px",
 }));
 
+/* ✅ flex 1 1 0 + height 0 */
 const TableScrollArea = styled(Box)(() => ({
   overflow: "auto",
-  flex: 1,
+  flex: "1 1 0",
+  height: 0,
   minHeight: 0,
+  width: "100%",
   "&::-webkit-scrollbar": { width: "8px", height: "8px" },
   "&::-webkit-scrollbar-track": { backgroundColor: "#0d1527" },
   "&::-webkit-scrollbar-thumb": {
@@ -1772,8 +2128,29 @@ const TableScrollArea = styled(Box)(() => ({
   },
 }));
 
+/* ✅ Mobile card list */
+const CardListArea = styled(Box)(() => ({
+  overflowY: "auto",
+  overflowX: "hidden",
+  flex: "1 1 0",
+  height: 0,
+  minHeight: 0,
+  width: "100%",
+  padding: "12px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+  "&::-webkit-scrollbar": { width: "6px" },
+  "&::-webkit-scrollbar-track": { backgroundColor: "transparent" },
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor: "rgba(244, 63, 94, 0.3)",
+    borderRadius: "8px",
+  },
+}));
+
 const ItemsTable = styled("table")(() => ({
   width: "100%",
+  minWidth: "900px",
   borderCollapse: "collapse",
   "& thead": {
     backgroundColor: "#111827",
@@ -1787,7 +2164,7 @@ const ItemsTable = styled("table")(() => ({
     fontSize: "0.7rem",
     textTransform: "uppercase",
     letterSpacing: "0.8px",
-    padding: "16px 12px",
+    padding: "14px 12px",
     borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
     textAlign: "left",
     whiteSpace: "nowrap",
@@ -1801,25 +2178,11 @@ const ItemsTable = styled("table")(() => ({
   "& tbody td": {
     color: "#e5e7eb",
     fontSize: "0.85rem",
-    padding: "14px 12px",
+    padding: "12px",
     textAlign: "left",
+    whiteSpace: "nowrap",
   },
 }));
-
-// ===================== HELPERS =====================
-
-const firstOfMonthStr = () => {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1)
-    .toISOString()
-    .split("T")[0];
-};
-
-const formatMoney = (n: number) =>
-  `₹ ${(Number(n) || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}`;
 
 // ===================== MAIN =====================
 
@@ -1842,6 +2205,9 @@ const ExpenseEntry: React.FC = () => {
   const [toDate, setToDate] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
   const [appliedTo, setAppliedTo] = useState("");
+  const [activeQuick, setActiveQuick] = useState<
+    "today" | "week" | "month" | "all" | ""
+  >("");
 
   // Form modal
   const [formOpen, setFormOpen] = useState(false);
@@ -1923,15 +2289,13 @@ const ExpenseEntry: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, appliedFrom, appliedTo]);
 
-  // ===================== ✅ ANALYTICS (Derived) =====================
+  // ===================== ANALYTICS =====================
   const analytics = useMemo(() => {
     const pageCount = expenses.length;
-
     const pageSum = expenses.reduce(
       (s, e) => s + (Number(e.amount) || 0),
       0
     );
-
     const total = grandTotal > 0 ? grandTotal : pageSum;
 
     const avgPerEntry =
@@ -1941,7 +2305,6 @@ const ExpenseEntry: React.FC = () => {
         ? total / pageCount
         : 0;
 
-    // Top category (based on current page)
     const catMap = new Map<string, number>();
     expenses.forEach((e) => {
       const c = String(e.category || "Other");
@@ -1956,7 +2319,6 @@ const ExpenseEntry: React.FC = () => {
       }
     });
 
-    // Today's expense (from current page)
     const today = todayStr();
     const todayTotal = expenses
       .filter((e) => {
@@ -2004,6 +2366,7 @@ const ExpenseEntry: React.FC = () => {
     }
     setAppliedFrom(fromDate);
     setAppliedTo(toDate);
+    setActiveQuick("");
     setPage(1);
   };
 
@@ -2012,6 +2375,7 @@ const ExpenseEntry: React.FC = () => {
     setToDate("");
     setAppliedFrom("");
     setAppliedTo("");
+    setActiveQuick("");
     setPage(1);
   };
 
@@ -2042,6 +2406,7 @@ const ExpenseEntry: React.FC = () => {
       setAppliedFrom("");
       setAppliedTo("");
     }
+    setActiveQuick(type);
     setPage(1);
   };
 
@@ -2224,8 +2589,9 @@ const ExpenseEntry: React.FC = () => {
   return (
     <Box
       sx={{
-        height: "85vh",
-        maxHeight: "100vh",
+        // ✅ PAGE NEVER SCROLLS
+        height: { xs: "100dvh", md: "100vh" },
+        maxHeight: { xs: "100dvh", md: "100vh" },
         overflow: "hidden",
         bgcolor: "#090d16",
         px: { xs: 1.5, sm: 2, md: 3 },
@@ -2251,12 +2617,12 @@ const ExpenseEntry: React.FC = () => {
         <DarkBanner>
           <Box
             display="flex"
+            flexDirection={{ xs: "column", md: "row" }}
             justifyContent="space-between"
-            alignItems="center"
-            flexWrap="wrap"
-            gap={2}
+            alignItems={{ xs: "stretch", md: "center" }}
+            gap={1.5}
           >
-            <Box display="flex" alignItems="center" gap={2}>
+            <Box display="flex" alignItems="center" gap={1.5}>
               <Button
                 variant="outlined"
                 startIcon={<ArrowBack />}
@@ -2268,48 +2634,72 @@ const ExpenseEntry: React.FC = () => {
                   textTransform: "none",
                   borderRadius: "10px",
                   px: 2,
-                  py: 0.9,
-                  fontSize: "0.8rem",
+                  py: 0.8,
+                  fontSize: "0.78rem",
+                  minWidth: "auto",
                   "&:hover": {
-                    borderColor: "#38bdf8",
-                    color: "#38bdf8",
-                    bgcolor: "rgba(56, 189, 248, 0.08)",
+                    borderColor: "#f43f5e",
+                    color: "#f43f5e",
+                    bgcolor: "rgba(244, 63, 94, 0.08)",
                   },
                 }}
               >
                 Dashboard
               </Button>
 
-              <Box display="flex" alignItems="center" gap={1.5}>
+              <Box display="flex" alignItems="center" gap={1.2} sx={{ minWidth: 0 }}>
                 <Box
                   sx={{
-                    width: 40,
-                    height: 40,
+                    width: 36,
+                    height: 36,
                     borderRadius: "10px",
                     bgcolor: "#31121d",
                     color: "#f43f5e",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  <LocalGasStation />
+                  <LocalGasStation sx={{ fontSize: 20 }} />
                 </Box>
-                <Typography
-                  variant="h5"
-                  fontWeight="800"
-                  sx={{
-                    fontSize: { xs: "1rem", sm: "1.3rem", md: "1.5rem" },
-                    letterSpacing: 0.5,
-                    color: "#ffffff",
-                  }}
-                >
-                  6. ROUTE & TRIP EXPENSES ENTRY
-                </Typography>
+                <Box sx={{ minWidth: 0 }}>
+                  <Box display="flex" alignItems="center" gap={1} mb={0.2}>
+                    <FiberManualRecord sx={{ fontSize: 10, color: "#f43f5e" }} />
+                    <Typography
+                      sx={{
+                        color: "#f43f5e",
+                        letterSpacing: 0.5,
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Expense Management
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="h5"
+                    fontWeight="800"
+                    sx={{
+                      fontSize: { xs: "0.95rem", sm: "1.2rem", md: "1.4rem" },
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    6. ROUTE & TRIP EXPENSES
+                  </Typography>
+                </Box>
               </Box>
             </Box>
 
-            <Box display="flex" gap={1.5} alignItems="center" flexWrap="wrap">
+            <Box
+              display="flex"
+              gap={1}
+              flexWrap="wrap"
+              sx={{
+                width: { xs: "100%", md: "auto" },
+                justifyContent: { xs: "stretch", md: "flex-end" },
+              }}
+            >
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -2323,8 +2713,9 @@ const ExpenseEntry: React.FC = () => {
                   borderRadius: "10px",
                   px: 2.5,
                   py: 1,
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
                   boxShadow: "0 4px 14px rgba(244, 63, 94, 0.35)",
+                  flex: { xs: "1 1 45%", sm: "none" },
                   "&:hover": {
                     bgcolor: "#e11d48",
                     boxShadow: "0 8px 20px rgba(244, 63, 94, 0.5)",
@@ -2347,7 +2738,8 @@ const ExpenseEntry: React.FC = () => {
                   borderRadius: "10px",
                   px: 2.5,
                   py: 1,
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
+                  flex: { xs: "1 1 45%", sm: "none" },
                   "&:hover": {
                     borderColor: "#38bdf8",
                     color: "#38bdf8",
@@ -2371,7 +2763,8 @@ const ExpenseEntry: React.FC = () => {
                     borderRadius: "10px",
                     px: 2,
                     py: 1,
-                    fontSize: "0.8rem",
+                    fontSize: "0.78rem",
+                    flex: { xs: "1 1 100%", sm: "none" },
                     "&:hover": {
                       borderColor: "#f43f5e",
                       bgcolor: "rgba(244, 63, 94, 0.08)",
@@ -2385,10 +2778,9 @@ const ExpenseEntry: React.FC = () => {
           </Box>
         </DarkBanner>
 
-        {/* ================= ANALYTICAL SUMMARY BAR (NEW) ================= */}
+        {/* ================= ANALYTICS ================= */}
         <AnalyticsBar>
           <Grid container spacing={1.5}>
-            {/* TOTAL EXPENSES */}
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <StatCard accent="#f43f5e">
                 <Box
@@ -2422,7 +2814,7 @@ const ExpenseEntry: React.FC = () => {
                     sx={{
                       color: "#f43f5e",
                       fontWeight: 900,
-                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      fontSize: { xs: "1rem", sm: "1.15rem" },
                       mt: 0.3,
                       letterSpacing: 0.3,
                       textShadow: "0 0 14px rgba(244, 63, 94, 0.4)",
@@ -2435,7 +2827,6 @@ const ExpenseEntry: React.FC = () => {
               </StatCard>
             </Grid>
 
-            {/* TOTAL ENTRIES */}
             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <StatCard accent="#c084fc">
                 <Box
@@ -2469,7 +2860,7 @@ const ExpenseEntry: React.FC = () => {
                     sx={{
                       color: "#c084fc",
                       fontWeight: 900,
-                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      fontSize: { xs: "1rem", sm: "1.15rem" },
                       mt: 0.3,
                       letterSpacing: 0.3,
                       lineHeight: 1.1,
@@ -2481,7 +2872,6 @@ const ExpenseEntry: React.FC = () => {
               </StatCard>
             </Grid>
 
-            {/* TOP CATEGORY */}
             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <StatCard accent="#fbbf24">
                 <Box
@@ -2515,7 +2905,7 @@ const ExpenseEntry: React.FC = () => {
                     sx={{
                       color: "#fbbf24",
                       fontWeight: 900,
-                      fontSize: "0.9rem",
+                      fontSize: "0.85rem",
                       mt: 0.3,
                       letterSpacing: 0.2,
                       lineHeight: 1.2,
@@ -2530,7 +2920,7 @@ const ExpenseEntry: React.FC = () => {
                   <Typography
                     sx={{
                       color: "#9ca3af",
-                      fontSize: "0.65rem",
+                      fontSize: "0.62rem",
                       fontWeight: 600,
                       mt: 0.2,
                     }}
@@ -2541,7 +2931,6 @@ const ExpenseEntry: React.FC = () => {
               </StatCard>
             </Grid>
 
-            {/* AVG / ENTRY */}
             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <StatCard accent="#38bdf8">
                 <Box
@@ -2575,7 +2964,7 @@ const ExpenseEntry: React.FC = () => {
                     sx={{
                       color: "#38bdf8",
                       fontWeight: 900,
-                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      fontSize: { xs: "1rem", sm: "1.15rem" },
                       mt: 0.3,
                       letterSpacing: 0.3,
                       lineHeight: 1.1,
@@ -2586,7 +2975,7 @@ const ExpenseEntry: React.FC = () => {
                   <Typography
                     sx={{
                       color: "#9ca3af",
-                      fontSize: "0.65rem",
+                      fontSize: "0.62rem",
                       fontWeight: 600,
                       mt: 0.2,
                     }}
@@ -2599,148 +2988,172 @@ const ExpenseEntry: React.FC = () => {
           </Grid>
         </AnalyticsBar>
 
-        {/* ================= DATE FILTER BAR ================= */}
+        {/* ================= FILTER BAR ================= */}
         <FilterBar>
-          <Box display="flex" alignItems="center" flexWrap="wrap" gap={1.5}>
-            <Box display="flex" alignItems="center" gap={0.8}>
-              <FilterIcon sx={{ color: "#f43f5e", fontSize: 18 }} />
-              <Typography
-                sx={{
-                  color: "#f43f5e",
-                  fontWeight: 800,
-                  fontSize: "0.75rem",
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
-                }}
-              >
-                Date Filter
-              </Typography>
-            </Box>
+          <Grid container spacing={1.5}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <StyledTextField
+                type="date"
+                size="small"
+                fullWidth
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                label="From"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <StyledTextField
+                type="date"
+                size="small"
+                fullWidth
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                label="To"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 12, md: 6 }}>
+              <Box display="flex" gap={1} sx={{ height: "100%" }}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  fullWidth
+                  startIcon={<FilterIcon sx={{ fontSize: 14 }} />}
+                  onClick={handleApplyDateFilter}
+                  sx={{
+                    bgcolor: "#f43f5e",
+                    color: "#fff",
+                    fontWeight: 700,
+                    textTransform: "none",
+                    borderRadius: "10px",
+                    py: 1.1,
+                    fontSize: "0.78rem",
+                    "&:hover": { bgcolor: "#e11d48" },
+                  }}
+                >
+                  Apply
+                </Button>
 
-            <StyledTextField
-              type="date"
-              size="small"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              sx={{ width: 160 }}
-            />
-            <Typography sx={{ color: "#6b7280", fontSize: "0.8rem" }}>
-              to
-            </Typography>
-            <StyledTextField
-              type="date"
-              size="small"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              sx={{ width: 160 }}
-            />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<ClearIcon sx={{ fontSize: 14 }} />}
+                  onClick={handleClearDateFilter}
+                  disabled={!hasDateFilter && !fromDate && !toDate}
+                  sx={{
+                    color: "#9ca3af",
+                    borderColor: "rgba(255, 255, 255, 0.15)",
+                    fontWeight: 700,
+                    textTransform: "none",
+                    borderRadius: "10px",
+                    py: 1.1,
+                    fontSize: "0.78rem",
+                    "&:hover": {
+                      borderColor: "#f43f5e",
+                      color: "#f43f5e",
+                      bgcolor: "rgba(244, 63, 94, 0.08)",
+                    },
+                  }}
+                >
+                  Clear
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
 
-            <Button
-              size="small"
-              variant="contained"
-              onClick={handleApplyDateFilter}
-              sx={{
-                bgcolor: "#f43f5e",
-                color: "#fff",
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: "8px",
-                px: 2,
-                fontSize: "0.75rem",
-                "&:hover": { bgcolor: "#e11d48" },
-              }}
-            >
-              Apply
-            </Button>
-
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<ClearIcon sx={{ fontSize: 14 }} />}
-              onClick={handleClearDateFilter}
-              disabled={!hasDateFilter && !fromDate && !toDate}
+          {/* Quick chips row */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              flexWrap: "wrap",
+              mt: 1.5,
+              alignItems: "center",
+            }}
+          >
+            <Typography
               sx={{
                 color: "#9ca3af",
-                borderColor: "rgba(255, 255, 255, 0.15)",
+                fontSize: "0.72rem",
                 fontWeight: 700,
-                textTransform: "none",
-                borderRadius: "8px",
-                px: 1.5,
-                fontSize: "0.75rem",
-                "&:hover": {
-                  borderColor: "#f43f5e",
-                  color: "#f43f5e",
-                  bgcolor: "rgba(244, 63, 94, 0.08)",
-                },
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                mr: 0.5,
               }}
             >
-              Clear
-            </Button>
+              Quick:
+            </Typography>
+
+            <QuickFilterChip
+              active={activeQuick === "today"}
+              onClick={() => applyQuickRange("today")}
+            >
+              Today
+            </QuickFilterChip>
+            <QuickFilterChip
+              active={activeQuick === "week"}
+              onClick={() => applyQuickRange("week")}
+            >
+              Last 7d
+            </QuickFilterChip>
+            <QuickFilterChip
+              active={activeQuick === "month"}
+              onClick={() => applyQuickRange("month")}
+            >
+              This Month
+            </QuickFilterChip>
+            <QuickFilterChip
+              active={activeQuick === "all"}
+              onClick={() => applyQuickRange("all")}
+            >
+              All
+            </QuickFilterChip>
 
             <Box
               sx={{
-                display: "flex",
-                gap: 0.7,
                 ml: { md: "auto" },
+                display: "flex",
+                gap: 1,
+                alignItems: "center",
                 flexWrap: "wrap",
+                mt: { xs: 1, md: 0 },
               }}
             >
-              {[
-                { k: "today", label: "Today" },
-                { k: "week", label: "Last 7d" },
-                { k: "month", label: "This Month" },
-                { k: "all", label: "All" },
-              ].map((q) => (
+              {hasDateFilter && (
                 <Chip
-                  key={q.k}
-                  label={q.label}
+                  label={`${appliedFrom || "..."} → ${appliedTo || "..."}`}
                   size="small"
-                  onClick={() =>
-                    applyQuickRange(q.k as "today" | "week" | "month" | "all")
-                  }
+                  onDelete={handleClearDateFilter}
                   sx={{
-                    bgcolor: "rgba(255, 255, 255, 0.05)",
-                    color: "#e5e7eb",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    fontWeight: 600,
+                    bgcolor: "rgba(244, 63, 94, 0.15)",
+                    color: "#f43f5e",
+                    border: "1px solid rgba(244, 63, 94, 0.4)",
+                    fontWeight: 700,
                     fontSize: "0.7rem",
-                    height: "26px",
-                    cursor: "pointer",
-                    "&:hover": {
-                      bgcolor: "rgba(244, 63, 94, 0.15)",
-                      borderColor: "rgba(244, 63, 94, 0.4)",
+                    height: "28px",
+                    "& .MuiChip-deleteIcon": {
                       color: "#f43f5e",
+                      "&:hover": { color: "#fff" },
                     },
                   }}
                 />
-              ))}
+              )}
             </Box>
-
-            {hasDateFilter && (
-              <Chip
-                label={`Active: ${appliedFrom || "..."} → ${appliedTo || "..."}`}
-                size="small"
-                sx={{
-                  bgcolor: "rgba(244, 63, 94, 0.15)",
-                  color: "#f43f5e",
-                  border: "1px solid rgba(244, 63, 94, 0.4)",
-                  fontWeight: 700,
-                  fontSize: "0.7rem",
-                  height: "26px",
-                }}
-              />
-            )}
           </Box>
         </FilterBar>
 
-        {/* ================= LOG SHEET ================= */}
+        {/* ================= TABLE / CARDS ================= */}
         <TableContainerDark>
           <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
-            px={3}
-            py={2}
+            flexWrap="wrap"
+            gap={1}
+            px={{ xs: 2, sm: 3 }}
+            py={1.8}
             sx={{
               borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
               flexShrink: 0,
@@ -2750,19 +3163,19 @@ const ExpenseEntry: React.FC = () => {
               sx={{
                 color: "#ffffff",
                 fontWeight: 800,
-                fontSize: "0.95rem",
+                fontSize: { xs: "0.85rem", sm: "0.95rem" },
                 letterSpacing: 0.5,
               }}
             >
               ROUTE EXPENSES LOG SHEET
             </Typography>
             <Chip
-              label={`${totalCount} Expenses Logged`}
+              label={`${totalCount} Expenses`}
               size="small"
               sx={{
-                bgcolor: "rgba(255, 255, 255, 0.05)",
-                color: "#9ca3af",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
+                bgcolor: "rgba(244, 63, 94, 0.1)",
+                color: "#f43f5e",
+                border: "1px solid rgba(244, 63, 94, 0.3)",
                 fontWeight: 700,
                 fontSize: "0.7rem",
                 height: "26px",
@@ -2770,7 +3183,8 @@ const ExpenseEntry: React.FC = () => {
             />
           </Box>
 
-          <TableScrollArea>
+          {/* ✅ DESKTOP TABLE */}
+          <TableScrollArea sx={{ display: { xs: "none", md: "block" } }}>
             <ItemsTable>
               <thead>
                 <tr>
@@ -2815,13 +3229,6 @@ const ExpenseEntry: React.FC = () => {
                       />
                       <Typography sx={{ color: "#9ca3af", fontSize: "0.9rem" }}>
                         No expenses found
-                      </Typography>
-                      <Typography
-                        sx={{ color: "#6b7280", fontSize: "0.75rem", mt: 0.5 }}
-                      >
-                        {hasDateFilter
-                          ? "Try changing the date filter"
-                          : "Click 'Expense Entry' to add your first expense"}
                       </Typography>
                     </td>
                   </tr>
@@ -2881,7 +3288,7 @@ const ExpenseEntry: React.FC = () => {
                           sx={{
                             color: "#f43f5e",
                             fontWeight: 800,
-                            fontSize: "0.95rem",
+                            fontSize: "0.9rem",
                           }}
                         >
                           ₹{" "}
@@ -2920,6 +3327,224 @@ const ExpenseEntry: React.FC = () => {
             </ItemsTable>
           </TableScrollArea>
 
+          {/* ✅ MOBILE CARDS */}
+          <CardListArea sx={{ display: { xs: "flex", md: "none" } }}>
+            {listLoading ? (
+              <Box sx={{ textAlign: "center", py: 5 }}>
+                <CircularProgress sx={{ color: "#f43f5e" }} size={32} />
+                <Typography
+                  sx={{ color: "#9ca3af", fontSize: "0.85rem", mt: 1 }}
+                >
+                  Loading expenses...
+                </Typography>
+              </Box>
+            ) : expenses.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 5 }}>
+                <Receipt sx={{ fontSize: 44, color: "#374151", mb: 1 }} />
+                <Typography sx={{ color: "#9ca3af", fontSize: "0.9rem" }}>
+                  No expenses found
+                </Typography>
+                <Typography
+                  sx={{ color: "#6b7280", fontSize: "0.75rem", mt: 0.5 }}
+                >
+                  {hasDateFilter
+                    ? "Try changing the date filter"
+                    : "Tap 'Expense Entry' to add your first expense"}
+                </Typography>
+              </Box>
+            ) : (
+              expenses.map((row, idx) => (
+                <Box
+                  key={row._id}
+                  sx={{
+                    bgcolor: "#111827",
+                    border: "1px solid rgba(244, 63, 94, 0.2)",
+                    borderRadius: "12px",
+                    p: 1.5,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      borderColor: "rgba(244, 63, 94, 0.45)",
+                      boxShadow: "0 6px 18px rgba(244, 63, 94, 0.15)",
+                    },
+                  }}
+                >
+                  {/* Top: index + amount */}
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="flex-start"
+                    gap={1}
+                    mb={1}
+                  >
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                      sx={{ minWidth: 0, flex: 1 }}
+                    >
+                      <Box
+                        sx={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: "8px",
+                          bgcolor: "rgba(244, 63, 94, 0.15)",
+                          color: "#f43f5e",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.68rem",
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {(page - 1) * limit + idx + 1}
+                      </Box>
+                      <Typography
+                        sx={{
+                          color: "#ffffff",
+                          fontWeight: 700,
+                          fontSize: "0.85rem",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {row.category}
+                      </Typography>
+                    </Box>
+                    <Typography
+                      sx={{
+                        color: "#f43f5e",
+                        fontWeight: 900,
+                        fontSize: "0.95rem",
+                        flexShrink: 0,
+                      }}
+                    >
+                      ₹ {row.amount.toLocaleString("en-IN")}
+                    </Typography>
+                  </Box>
+
+                  {/* Description */}
+                  {row.description && (
+                    <Typography
+                      sx={{
+                        color: "#9ca3af",
+                        fontSize: "0.75rem",
+                        mb: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                      }}
+                    >
+                      {row.description}
+                    </Typography>
+                  )}
+
+                  {/* Info grid */}
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <Box>
+                      <Typography
+                        sx={{
+                          color: "#6b7280",
+                          fontSize: "0.6rem",
+                          fontWeight: 700,
+                          letterSpacing: 0.5,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Date
+                      </Typography>
+                      <Typography
+                        sx={{
+                          color: "#e5e7eb",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          mt: 0.2,
+                        }}
+                      >
+                        {new Date(
+                          row.date || row.createdAt
+                        ).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </Typography>
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        sx={{
+                          color: "#6b7280",
+                          fontSize: "0.6rem",
+                          fontWeight: 700,
+                          letterSpacing: 0.5,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Paid Via
+                      </Typography>
+                      <Chip
+                        label={row.paidVia}
+                        size="small"
+                        sx={{
+                          bgcolor: "rgba(255, 255, 255, 0.05)",
+                          color: "#e5e7eb",
+                          border: "1px solid rgba(255, 255, 255, 0.1)",
+                          fontWeight: 600,
+                          fontSize: "0.62rem",
+                          height: "20px",
+                          mt: 0.3,
+                        }}
+                      />
+                    </Box>
+                  </Box>
+
+                  {/* Actions */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: 0.5,
+                      borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                      pt: 0.8,
+                    }}
+                  >
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEdit(row)}
+                      sx={{
+                        color: "#38bdf8",
+                        "&:hover": { bgcolor: "rgba(56, 189, 248, 0.1)" },
+                      }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => setDeleteId(row._id)}
+                      sx={{
+                        color: "#f43f5e",
+                        "&:hover": { bgcolor: "rgba(244, 63, 94, 0.1)" },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              ))
+            )}
+          </CardListArea>
+
           {/* ================= PAGINATION BAR ================= */}
           <Box
             sx={{
@@ -2928,17 +3553,17 @@ const ExpenseEntry: React.FC = () => {
               alignItems: "center",
               flexWrap: "wrap",
               gap: 1.5,
-              px: 3,
-              py: 1.8,
+              px: { xs: 2, sm: 3 },
+              py: 1.6,
               borderTop: "1px solid rgba(255, 255, 255, 0.08)",
               flexShrink: 0,
             }}
           >
-            <Box display="flex" alignItems="center" gap={1.5}>
+            <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
               <Typography
-                sx={{ color: "#9ca3af", fontSize: "0.75rem", fontWeight: 600 }}
+                sx={{ color: "#9ca3af", fontSize: "0.72rem", fontWeight: 600 }}
               >
-                Rows per page:
+                Rows:
               </Typography>
               {[10, 25, 50, 100].map((n) => (
                 <Chip
@@ -2967,7 +3592,7 @@ const ExpenseEntry: React.FC = () => {
                 />
               ))}
               <Typography
-                sx={{ color: "#6b7280", fontSize: "0.75rem", ml: 1 }}
+                sx={{ color: "#6b7280", fontSize: "0.72rem", ml: 0.5 }}
               >
                 {totalCount > 0
                   ? `${(page - 1) * limit + 1}–${Math.min(
@@ -2990,7 +3615,7 @@ const ExpenseEntry: React.FC = () => {
                   color: "#9ca3af",
                   borderColor: "rgba(255, 255, 255, 0.1)",
                   fontWeight: 700,
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
                   "&:hover": {
                     bgcolor: "rgba(244, 63, 94, 0.1)",
                     color: "#f43f5e",
@@ -3016,12 +3641,12 @@ const ExpenseEntry: React.FC = () => {
             bottom: 20,
             right: 20,
             zIndex: 1200,
-            bgcolor: "#38bdf8",
-            color: "#0d1527",
-            width: 52,
-            height: 52,
-            boxShadow: "0 8px 24px rgba(56, 189, 248, 0.45)",
-            "&:hover": { bgcolor: "#0ea5e9" },
+            bgcolor: "#f43f5e",
+            color: "#ffffff",
+            width: 50,
+            height: 50,
+            boxShadow: "0 8px 24px rgba(244, 63, 94, 0.45)",
+            "&:hover": { bgcolor: "#e11d48" },
           }}
         >
           <HomeIcon />
@@ -3040,6 +3665,8 @@ const ExpenseEntry: React.FC = () => {
             borderRadius: "16px",
             border: "1px solid rgba(255, 255, 255, 0.08)",
             backgroundImage: "none",
+            m: { xs: 1.5, sm: 4 },
+            width: { xs: "calc(100% - 24px)", sm: "100%" },
           },
         }}
       >
@@ -3048,8 +3675,10 @@ const ExpenseEntry: React.FC = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 1,
             borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-            px: 3,
+            px: { xs: 2, sm: 3 },
             py: 2,
           }}
         >
@@ -3064,6 +3693,7 @@ const ExpenseEntry: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                flexShrink: 0,
               }}
             >
               <LockIcon sx={{ fontSize: 18 }} />
@@ -3072,21 +3702,18 @@ const ExpenseEntry: React.FC = () => {
               sx={{
                 color: "#f43f5e",
                 fontWeight: 800,
-                fontSize: "0.9rem",
+                fontSize: { xs: "0.8rem", sm: "0.9rem" },
                 letterSpacing: 1,
                 textTransform: "uppercase",
               }}
             >
-              {editingId
-                ? "Edit Expense Entry"
-                : "Log Vehicle & Driver Expenses"}
+              {editingId ? "Edit Expense Entry" : "Log Trip Expenses"}
             </Typography>
             {editingId && (
               <Chip
                 label="EDITING"
                 size="small"
                 sx={{
-                  ml: 1,
                   bgcolor: "rgba(251, 191, 36, 0.15)",
                   color: "#fbbf24",
                   border: "1px solid rgba(251, 191, 36, 0.3)",
@@ -3113,7 +3740,7 @@ const ExpenseEntry: React.FC = () => {
           </IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ p: 3 }}>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <FieldLabel>Expense Category</FieldLabel>
@@ -3216,8 +3843,8 @@ const ExpenseEntry: React.FC = () => {
 
         <DialogActions
           sx={{
-            px: 3,
-            pb: 3,
+            px: { xs: 2, sm: 3 },
+            pb: { xs: 2, sm: 3 },
             pt: 1,
             borderTop: "1px solid rgba(255, 255, 255, 0.08)",
             gap: 1,
@@ -3262,7 +3889,7 @@ const ExpenseEntry: React.FC = () => {
               borderRadius: "10px",
               px: 3,
               py: 1.1,
-              fontSize: "0.8rem",
+              fontSize: "0.78rem",
               boxShadow: "0 4px 14px rgba(244, 63, 94, 0.3)",
               "&:hover": {
                 bgcolor: "#e11d48",
@@ -3277,8 +3904,8 @@ const ExpenseEntry: React.FC = () => {
             {saving
               ? "Saving..."
               : editingId
-              ? "Update Expense"
-              : "Add Expense Entry"}
+              ? "Update"
+              : "Add Entry"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -3292,6 +3919,8 @@ const ExpenseEntry: React.FC = () => {
             bgcolor: "#111827",
             borderRadius: "16px",
             border: "1px solid rgba(255, 255, 255, 0.08)",
+            m: { xs: 1.5, sm: 4 },
+            width: { xs: "calc(100% - 24px)", sm: "100%" },
           },
         }}
       >
@@ -3345,6 +3974,8 @@ const ExpenseEntry: React.FC = () => {
             bgcolor: "#111827",
             borderRadius: "16px",
             border: "1px solid rgba(255, 255, 255, 0.08)",
+            m: { xs: 1.5, sm: 4 },
+            width: { xs: "calc(100% - 24px)", sm: "100%" },
           },
         }}
       >

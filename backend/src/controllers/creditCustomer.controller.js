@@ -306,17 +306,29 @@ const getCreditsByCustomer = async (req, res) => {
   }
 };
 
+
 // =============================
 // UPDATE CREDIT ENTRY
 // PUT /api/credit-customer/:id
 // =============================
 const updateCreditEntry = async (req, res) => {
   try {
-    const { customerId, customerName, billNo, amount, remarks, date } = req.body;
+    const {
+      customerId,
+      customerName,
+      billNo,
+      amount,
+      remarks,
+      date,
+    } = req.body;
 
-    let creditEntry = await CreditCustomer.findById(req.params.id);
+    // =========================
+    // Find Existing Credit Entry
+    // =========================
 
-    if (!creditEntry) {
+    const oldCreditEntry = await CreditCustomer.findById(req.params.id);
+
+    if (!oldCreditEntry) {
       return res.json({
         success: false,
         statusCode: 404,
@@ -324,7 +336,10 @@ const updateCreditEntry = async (req, res) => {
       });
     }
 
-    // Validation on amount if provided
+    // =========================
+    // Validation
+    // =========================
+
     if (amount !== undefined && Number(amount) <= 0) {
       return res.json({
         success: false,
@@ -333,31 +348,238 @@ const updateCreditEntry = async (req, res) => {
       });
     }
 
+    if (customerId === "") {
+      return res.json({
+        success: false,
+        statusCode: 400,
+        message: "Customer is required",
+      });
+    }
+
+    if (
+      customerName !== undefined &&
+      !customerName.trim()
+    ) {
+      return res.json({
+        success: false,
+        statusCode: 400,
+        message: "Customer name is required",
+      });
+    }
+
+    // =========================
+    // Old & New Values
+    // =========================
+
+    const oldAmount = Number(oldCreditEntry.amount || 0);
+
+    const newAmount =
+      amount !== undefined
+        ? Number(amount)
+        : oldAmount;
+
+    const oldCustomerId = oldCreditEntry.customerId?.toString();
+
+    const newCustomerId =
+      customerId !== undefined
+        ? customerId.toString()
+        : oldCustomerId;
+
+    // =========================
+    // CASE 1
+    // Customer Same
+    // =========================
+
+    if (oldCustomerId === newCustomerId) {
+      const difference = newAmount - oldAmount;
+
+      if (difference !== 0) {
+        const customerLedger =
+          await Customerledger.findOne({
+            customerId: newCustomerId,
+          });
+
+        if (customerLedger) {
+          // Update Total Sell Amount
+          customerLedger.totalSellAmount = Math.max(
+            0,
+            Number(customerLedger.totalSellAmount || 0) +
+              difference
+          );
+
+          // Update Balance
+          customerLedger.balance = Math.max(
+            0,
+            Number(customerLedger.balance || 0) +
+              difference
+          );
+
+          await customerLedger.save();
+        } else {
+          // Ledger doesn't exist
+          await Customerledger.create({
+            customerId: newCustomerId,
+            customerName:
+              customerName?.trim() ||
+              oldCreditEntry.customerName,
+            totalSellAmount: newAmount,
+            totalRecievedAmount: 0,
+            balance: newAmount,
+            numberOfEntries: 1,
+          });
+        }
+      }
+    }
+
+    // =========================
+    // CASE 2
+    // Customer Changed
+    // =========================
+
+    else {
+      // -------------------------
+      // Remove Old Amount
+      // -------------------------
+
+      const oldLedger =
+        await Customerledger.findOne({
+          customerId: oldCustomerId,
+        });
+
+      if (oldLedger) {
+        oldLedger.totalSellAmount = Math.max(
+          0,
+          Number(oldLedger.totalSellAmount || 0) -
+            oldAmount
+        );
+
+        oldLedger.balance = Math.max(
+          0,
+          Number(oldLedger.balance || 0) -
+            oldAmount
+        );
+
+        oldLedger.numberOfEntries = Math.max(
+          0,
+          Number(oldLedger.numberOfEntries || 0) - 1
+        );
+
+        await oldLedger.save();
+      }
+
+      // -------------------------
+      // Add New Amount
+      // -------------------------
+
+      let newLedger =
+        await Customerledger.findOne({
+          customerId: newCustomerId,
+        });
+
+      if (newLedger) {
+        newLedger.totalSellAmount =
+          Number(newLedger.totalSellAmount || 0) +
+          newAmount;
+
+        newLedger.balance =
+          Number(newLedger.balance || 0) +
+          newAmount;
+
+        newLedger.numberOfEntries =
+          Number(newLedger.numberOfEntries || 0) + 1;
+
+        await newLedger.save();
+      } else {
+        newLedger = await Customerledger.create({
+          customerId: newCustomerId,
+          customerName:
+            customerName?.trim() ||
+            oldCreditEntry.customerName,
+          totalSellAmount: newAmount,
+          totalRecievedAmount: 0,
+          balance: newAmount,
+          numberOfEntries: 1,
+        });
+      }
+    }
+
+    // =========================
+    // Update Credit Entry
+    // =========================
+
     const updateData = {};
-    if (customerId) updateData.customerId = customerId;
-    if (customerName !== undefined) updateData.customerName = customerName.trim();
-    if (billNo !== undefined) updateData.billNo = billNo.trim() || "-";
-    if (amount !== undefined) updateData.amount = Number(amount);
-    if (remarks !== undefined) updateData.remarks = remarks.trim() || "-";
-    if (date) updateData.date = new Date(date);
 
-    creditEntry = await CreditCustomer.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate("customerId", "companyName displayName phone email");
+    if (customerId !== undefined) {
+      updateData.customerId = customerId;
+    }
 
-    res.json({
+    if (customerName !== undefined) {
+      updateData.customerName =
+        customerName.trim();
+    }
+
+    if (billNo !== undefined) {
+      updateData.billNo =
+        billNo.trim() || "-";
+    }
+
+    if (amount !== undefined) {
+      updateData.amount = newAmount;
+
+      // Important:
+      // Remaining amount should also change
+      // according to new credit amount.
+      updateData.remaingAmount = newAmount;
+    }
+
+    if (remarks !== undefined) {
+      updateData.remarks =
+        remarks.trim() || "-";
+    }
+
+    if (date) {
+      updateData.date = new Date(date);
+    }
+
+    // =========================
+    // Save Updated Credit Entry
+    // =========================
+
+    const updatedCreditEntry =
+      await CreditCustomer.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        {
+          new: true,
+          runValidators: true,
+        }
+      ).populate(
+        "customerId",
+        "companyName displayName phone email"
+      );
+
+    // =========================
+    // Response
+    // =========================
+
+    return res.json({
       success: true,
       statusCode: 200,
       message: "Credit entry updated successfully",
-      data: creditEntry,
+      data: updatedCreditEntry,
     });
+
   } catch (error) {
-    console.error("Update Credit Entry Error:", error);
+    console.error(
+      "Update Credit Entry Error:",
+      error
+    );
 
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((err) => err.message);
+      const messages = Object.values(
+        error.errors
+      ).map((err) => err.message);
+
       return res.json({
         success: false,
         statusCode: 400,
@@ -374,10 +596,11 @@ const updateCreditEntry = async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: false,
       statusCode: 500,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };
@@ -388,7 +611,14 @@ const updateCreditEntry = async (req, res) => {
 // =============================
 const deleteCreditEntry = async (req, res) => {
   try {
-    const creditEntry = await CreditCustomer.findById(req.params.id);
+    // =========================
+    // Find Credit Entry
+    // =========================
+
+    const creditEntry =
+      await CreditCustomer.findById(
+        req.params.id
+      );
 
     if (!creditEntry) {
       return res.json({
@@ -398,15 +628,82 @@ const deleteCreditEntry = async (req, res) => {
       });
     }
 
+    // =========================
+    // Get Credit Information
+    // =========================
+
+    const customerId =
+      creditEntry.customerId;
+
+    const creditAmount =
+      Number(creditEntry.amount || 0);
+
+    // =========================
+    // Find Customer Ledger
+    // =========================
+
+    const customerLedger =
+      await Customerledger.findOne({
+        customerId,
+      });
+
+    // =========================
+    // Update Customer Ledger
+    // =========================
+
+    if (customerLedger) {
+      // Remove Credit Amount
+      customerLedger.totalSellAmount =
+        Math.max(
+          0,
+          Number(
+            customerLedger.totalSellAmount || 0
+          ) - creditAmount
+        );
+
+      // Remove Balance
+      customerLedger.balance =
+        Math.max(
+          0,
+          Number(
+            customerLedger.balance || 0
+          ) - creditAmount
+        );
+
+      // Remove One Entry
+      customerLedger.numberOfEntries =
+        Math.max(
+          0,
+          Number(
+            customerLedger.numberOfEntries || 0
+          ) - 1
+        );
+
+      await customerLedger.save();
+    }
+
+    // =========================
+    // Delete Credit Entry
+    // =========================
+
     await creditEntry.deleteOne();
 
-    res.json({
+    // =========================
+    // Response
+    // =========================
+
+    return res.json({
       success: true,
       statusCode: 200,
-      message: "Credit entry deleted successfully",
+      message:
+        "Credit entry deleted and customer ledger updated successfully",
     });
+
   } catch (error) {
-    console.error("Delete Credit Entry Error:", error);
+    console.error(
+      "Delete Credit Entry Error:",
+      error
+    );
 
     if (error.kind === "ObjectId") {
       return res.json({
@@ -416,10 +713,11 @@ const deleteCreditEntry = async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: false,
       statusCode: 500,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };
@@ -428,22 +726,138 @@ const deleteCreditEntry = async (req, res) => {
 // DELETE ALL CREDIT ENTRIES
 // DELETE /api/credit-customer/delete-all
 // =============================
-const deleteAllCreditEntries = async (req, res) => {
+const deleteAllCreditEntries = async (
+  req,
+  res
+) => {
   try {
-    const result = await CreditCustomer.deleteMany({});
+    // =========================
+    // Get All Credit Entries
+    // =========================
 
-    res.json({
+    const creditEntries =
+      await CreditCustomer.find({});
+
+    // =========================
+    // If No Entries
+    // =========================
+
+    if (creditEntries.length === 0) {
+      return res.json({
+        success: true,
+        statusCode: 200,
+        message: "No credit entries found",
+        deletedCount: 0,
+      });
+    }
+
+    // =========================
+    // Calculate Customer-wise Amount
+    // =========================
+
+    const customerAmounts = {};
+
+    for (const creditEntry of creditEntries) {
+      const customerId =
+        creditEntry.customerId?.toString();
+
+      if (!customerId) continue;
+
+      const amount =
+        Number(creditEntry.amount || 0);
+
+      if (!customerAmounts[customerId]) {
+        customerAmounts[customerId] = {
+          amount: 0,
+          entries: 0,
+        };
+      }
+
+      customerAmounts[customerId].amount +=
+        amount;
+
+      customerAmounts[customerId].entries +=
+        1;
+    }
+
+    // =========================
+    // Update Each Customer Ledger
+    // =========================
+
+    for (const customerId of Object.keys(
+      customerAmounts
+    )) {
+      const {
+        amount,
+        entries,
+      } = customerAmounts[customerId];
+
+      const customerLedger =
+        await Customerledger.findOne({
+          customerId,
+        });
+
+      if (customerLedger) {
+        // Remove Total Sell Amount
+        customerLedger.totalSellAmount =
+          Math.max(
+            0,
+            Number(
+              customerLedger.totalSellAmount || 0
+            ) - amount
+          );
+
+        // Remove Balance
+        customerLedger.balance =
+          Math.max(
+            0,
+            Number(
+              customerLedger.balance || 0
+            ) - amount
+          );
+
+        // Remove Number Of Entries
+        customerLedger.numberOfEntries =
+          Math.max(
+            0,
+            Number(
+              customerLedger.numberOfEntries || 0
+            ) - entries
+          );
+
+        await customerLedger.save();
+      }
+    }
+
+    // =========================
+    // Delete All Credit Entries
+    // =========================
+
+    const result =
+      await CreditCustomer.deleteMany({});
+
+    // =========================
+    // Response
+    // =========================
+
+    return res.json({
       success: true,
       statusCode: 200,
-      message: `${result.deletedCount} credit entries deleted successfully`,
+      message: `${result.deletedCount} credit entries deleted successfully and customer ledgers updated`,
       deletedCount: result.deletedCount,
     });
+
   } catch (error) {
-    console.error("Delete All Credit Entries Error:", error);
-    res.json({
+    console.error(
+      "Delete All Credit Entries Error:",
+      error
+    );
+
+    return res.json({
       success: false,
       statusCode: 500,
       message: "Internal server error",
+      error: error.message,
     });
   }
 };

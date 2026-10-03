@@ -29,6 +29,7 @@ import CustomerLedger from "./pages/CustomerLedger";
 import CustomerLedgerDetail from "./pages/CustomerLedgerDetail";
 import FinalCalculation from "./pages/FinalCalculation";
 import ReturnItemsEdit from "./pages/SaleReturn/ReturnItemsEdit";
+import RouteDirectionSale from "./pages/RouteDirectionSale";
 
 
 
@@ -67,6 +68,7 @@ function App() {
 
 <Route path="/customer-ledger/:customerId" element={<CustomerLedgerDetail />} />
 
+<Route path="/route-direction-sale" element={<RouteDirectionSale />} />
 
 
             <Route 

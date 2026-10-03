@@ -1,8 +1,6 @@
 
 
-
-
-// import React, { useEffect, useState } from "react";
+// import React, { useEffect, useState, useMemo } from "react";
 // import axios from "axios";
 // import { useNavigate } from "react-router-dom";
 // import toast from "react-hot-toast";
@@ -10,7 +8,6 @@
 //   Box,
 //   Button,
 //   Typography,
-
 //   Chip,
 //   IconButton,
 //   TextField,
@@ -23,6 +20,7 @@
 //   Pagination,
 //   Tooltip,
 //   Fab,
+//   Grid,
 // } from "@mui/material";
 // import { styled } from "@mui/material/styles";
 // import {
@@ -37,6 +35,9 @@
 //   ArrowBack,
 //   Home as HomeIcon,
 //   Close as CloseIcon,
+//   AccountBalanceWallet,
+//   Functions,
+//   Inventory2,
 // } from "@mui/icons-material";
 
 // // ===================== TYPES =====================
@@ -88,6 +89,45 @@
 //   marginBottom: "16px",
 //   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
 //   flexShrink: 0,
+// }));
+
+// /* ===== NEW: Analytical Summary Bar ===== */
+// const AnalyticsBar = styled(Box)(() => ({
+//   backgroundColor: "#0d1527",
+//   borderRadius: "16px",
+//   border: "1px solid rgba(56, 189, 248, 0.25)",
+//   padding: "16px 20px",
+//   marginBottom: "16px",
+//   boxShadow: "0 8px 24px rgba(56, 189, 248, 0.08)",
+//   flexShrink: 0,
+//   position: "relative",
+//   overflow: "hidden",
+//   "&::before": {
+//     content: '""',
+//     position: "absolute",
+//     top: 0,
+//     left: 0,
+//     right: 0,
+//     height: "2px",
+//     background:
+//       "linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent)",
+//   },
+// }));
+
+// const StatCard = styled(Box)<{ accent: string }>(({ accent }) => ({
+//   backgroundColor: "#111827",
+//   borderRadius: "12px",
+//   border: `1px solid ${accent}22`,
+//   padding: "12px 14px",
+//   display: "flex",
+//   alignItems: "center",
+//   gap: "12px",
+//   transition: "all 0.25s ease",
+//   "&:hover": {
+//     transform: "translateY(-2px)",
+//     borderColor: `${accent}66`,
+//     boxShadow: `0 8px 20px ${accent}22`,
+//   },
 // }));
 
 // const StyledTextField = styled(TextField)(() => ({
@@ -201,6 +241,12 @@
 //   });
 // };
 
+// const formatMoney = (n: number) =>
+//   `₹ ${(Number(n) || 0).toLocaleString("en-IN", {
+//     minimumFractionDigits: 0,
+//     maximumFractionDigits: 2,
+//   })}`;
+
 // // ===================== MAIN COMPONENT =====================
 
 // const SaleList: React.FC = () => {
@@ -213,6 +259,9 @@
 //   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 //   const [selectedId, setSelectedId] = useState<string | null>(null);
 //   const [loading, setLoading] = useState(true);
+
+//   // ✅ Grand total from backend (fallback = current page sum)
+//   const [grandTotal, setGrandTotal] = useState(0);
 
 //   // Filters
 //   const [fromDate, setFromDate] = useState("");
@@ -242,6 +291,16 @@
 
 //       if (res.data?.success === true) {
 //         setData(res.data.data || []);
+
+//         // ✅ Support multiple grandTotal key names
+//         const gt =
+//           res.data.grandTotal ??
+//           res.data.totalValue ??
+//           res.data.totalSum ??
+//           res.data.totalSales ??
+//           0;
+//         setGrandTotal(Number(gt) || 0);
+
 //         const count =
 //           res.data.totalCount ?? res.data.total ?? res.data.count ?? 0;
 //         const pages =
@@ -299,6 +358,49 @@
 //   };
 
 //   const hasDateFilter = !!(appliedFrom || appliedTo);
+
+//   // ===================== ✅ ANALYTICS (Derived) =====================
+//   const analytics = useMemo(() => {
+//     const pageCount = data.length;
+
+//     // Current page sum
+//     const pageSum = data.reduce((s, r) => s + getSaleTotal(r), 0);
+
+//     // Use backend grand total if available, else fallback to page sum
+//     const total = grandTotal > 0 ? grandTotal : pageSum;
+
+//     const avgPerInvoice =
+//       totalEntries > 0
+//         ? total / totalEntries
+//         : pageCount > 0
+//         ? total / pageCount
+//         : 0;
+
+//     // Total items sold (across current page)
+//     const totalItems = data.reduce(
+//       (s, r) => s + (r.items?.length || 0),
+//       0
+//     );
+
+//     // Total quantity (across current page)
+//     const totalQty = data.reduce(
+//       (s, r) =>
+//         s +
+//         (r.items || []).reduce(
+//           (q, i) => q + (Number(i.quantity) || 0),
+//           0
+//         ),
+//       0
+//     );
+
+//     return {
+//       total,
+//       count: totalEntries || pageCount,
+//       avgPerInvoice,
+//       totalItems,
+//       totalQty,
+//     };
+//   }, [data, grandTotal, totalEntries]);
 
 //   // ===================== DELETE ONE =====================
 //   const handleDelete = async (id: string) => {
@@ -529,6 +631,206 @@
 //           </Box>
 //         </DarkBanner>
 
+//         {/* ================= ANALYTICAL SUMMARY BAR (NEW) ================= */}
+//         <AnalyticsBar>
+//           <Grid container spacing={1.5}>
+//             {/* TOTAL SALES VALUE */}
+//             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+//               <StatCard accent="#34d399">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(52, 211, 153, 0.15)",
+//                     color: "#34d399",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <AccountBalanceWallet sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Total Sales{hasDateFilter ? " (Filtered)" : ""}
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#34d399",
+//                       fontWeight: 900,
+//                       fontSize: { xs: "1.05rem", sm: "1.2rem" },
+//                       mt: 0.3,
+//                       letterSpacing: 0.3,
+//                       textShadow: "0 0 14px rgba(52, 211, 153, 0.35)",
+//                       lineHeight: 1.1,
+//                     }}
+//                   >
+//                     {loading ? "..." : formatMoney(analytics.total)}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+
+//             {/* TOTAL ENTRIES */}
+//             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+//               <StatCard accent="#38bdf8">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(56, 189, 248, 0.15)",
+//                     color: "#38bdf8",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <Receipt sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Total Invoices
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#38bdf8",
+//                       fontWeight: 900,
+//                       fontSize: { xs: "1.05rem", sm: "1.2rem" },
+//                       mt: 0.3,
+//                       letterSpacing: 0.3,
+//                       lineHeight: 1.1,
+//                     }}
+//                   >
+//                     {loading ? "..." : analytics.count}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+
+//             {/* TOTAL ITEMS SOLD */}
+//             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+//               <StatCard accent="#c084fc">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(192, 132, 252, 0.15)",
+//                     color: "#c084fc",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <Inventory2 sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Items Sold
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#c084fc",
+//                       fontWeight: 900,
+//                       fontSize: { xs: "1.05rem", sm: "1.2rem" },
+//                       mt: 0.3,
+//                       letterSpacing: 0.3,
+//                       lineHeight: 1.1,
+//                     }}
+//                   >
+//                     {loading ? "..." : analytics.totalItems}
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 600,
+//                       mt: 0.2,
+//                     }}
+//                   >
+//                     Qty: {analytics.totalQty}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+
+//             {/* AVG / INVOICE */}
+//             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+//               <StatCard accent="#fbbf24">
+//                 <Box
+//                   sx={{
+//                     width: 42,
+//                     height: 42,
+//                     borderRadius: "10px",
+//                     bgcolor: "rgba(251, 191, 36, 0.15)",
+//                     color: "#fbbf24",
+//                     display: "flex",
+//                     alignItems: "center",
+//                     justifyContent: "center",
+//                     flexShrink: 0,
+//                   }}
+//                 >
+//                   <Functions sx={{ fontSize: 22 }} />
+//                 </Box>
+//                 <Box sx={{ minWidth: 0, flex: 1 }}>
+//                   <Typography
+//                     sx={{
+//                       color: "#9ca3af",
+//                       fontSize: "0.65rem",
+//                       fontWeight: 700,
+//                       letterSpacing: 0.8,
+//                       textTransform: "uppercase",
+//                     }}
+//                   >
+//                     Avg / Invoice
+//                   </Typography>
+//                   <Typography
+//                     sx={{
+//                       color: "#fbbf24",
+//                       fontWeight: 900,
+//                       fontSize: { xs: "1.05rem", sm: "1.2rem" },
+//                       mt: 0.3,
+//                       letterSpacing: 0.3,
+//                       lineHeight: 1.1,
+//                     }}
+//                   >
+//                     {loading ? "..." : formatMoney(analytics.avgPerInvoice)}
+//                   </Typography>
+//                 </Box>
+//               </StatCard>
+//             </Grid>
+//           </Grid>
+//         </AnalyticsBar>
+
 //         {/* ================= FILTER BAR ================= */}
 //         <FilterBar>
 //           <Box display="flex" alignItems="center" flexWrap="wrap" gap={1.5}>
@@ -637,7 +939,6 @@
 
 //         {/* ================= TABLE ================= */}
 //         <TableContainerDark>
-//           {/* Header (fixed) */}
 //           <Box
 //             display="flex"
 //             justifyContent="space-between"
@@ -673,7 +974,6 @@
 //             />
 //           </Box>
 
-//           {/* Scroll Area */}
 //           <TableScrollArea>
 //             <ItemsTable>
 //               <thead>
@@ -850,7 +1150,7 @@
 //             </ItemsTable>
 //           </TableScrollArea>
 
-//           {/* ================= PAGINATION BAR (fixed) ================= */}
+//           {/* ================= PAGINATION BAR ================= */}
 //           <Box
 //             sx={{
 //               display: "flex",
@@ -1040,7 +1340,6 @@
 //             </DialogTitle>
 
 //             <DialogContent sx={{ p: 3 }}>
-//               {/* Items table */}
 //               <Box
 //                 sx={{
 //                   bgcolor: "#111827",
@@ -1097,7 +1396,6 @@
 //                 </ItemsTable>
 //               </Box>
 
-//               {/* Grand total */}
 //               <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
 //                 <Box
 //                   sx={{
@@ -1343,8 +1641,8 @@ const DarkBanner = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
   border: "1px solid rgba(255, 255, 255, 0.08)",
-  padding: "20px 24px",
-  marginBottom: "16px",
+  padding: "18px 20px",
+  marginBottom: "14px",
   boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
   flexShrink: 0,
 }));
@@ -1353,19 +1651,18 @@ const FilterBar = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
   border: "1px solid rgba(255, 255, 255, 0.08)",
-  padding: "14px 20px",
-  marginBottom: "16px",
+  padding: "16px 18px",
+  marginBottom: "14px",
   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.4)",
   flexShrink: 0,
 }));
 
-/* ===== NEW: Analytical Summary Bar ===== */
 const AnalyticsBar = styled(Box)(() => ({
   backgroundColor: "#0d1527",
   borderRadius: "16px",
   border: "1px solid rgba(56, 189, 248, 0.25)",
-  padding: "16px 20px",
-  marginBottom: "16px",
+  padding: "16px 18px",
+  marginBottom: "14px",
   boxShadow: "0 8px 24px rgba(56, 189, 248, 0.08)",
   flexShrink: 0,
   position: "relative",
@@ -1390,6 +1687,7 @@ const StatCard = styled(Box)<{ accent: string }>(({ accent }) => ({
   display: "flex",
   alignItems: "center",
   gap: "12px",
+  height: "100%",
   transition: "all 0.25s ease",
   "&:hover": {
     transform: "translateY(-2px)",
@@ -1398,13 +1696,37 @@ const StatCard = styled(Box)<{ accent: string }>(({ accent }) => ({
   },
 }));
 
+/* Quick filter chip (This Month / Last Month / Today / Yesterday) */
+const QuickFilterChip = styled(Button)<{ active?: boolean }>(
+  ({ active }) => ({
+    borderRadius: "10px",
+    textTransform: "none",
+    fontWeight: 700,
+    fontSize: "0.75rem",
+    padding: "8px 18px",
+    minWidth: "auto",
+    whiteSpace: "nowrap",
+    backgroundColor: active ? "#38bdf8" : "rgba(56, 189, 248, 0.15)",
+    color: active ? "#0d1527" : "#38bdf8",
+    border: active
+      ? "1px solid #38bdf8"
+      : "1px solid rgba(56, 189, 248, 0.3)",
+    boxShadow: active ? "0 4px 14px rgba(56, 189, 248, 0.35)" : "none",
+    transition: "all 0.2s ease",
+    "&:hover": {
+      backgroundColor: active ? "#0ea5e9" : "rgba(56, 189, 248, 0.25)",
+      borderColor: "#38bdf8",
+    },
+  })
+);
+
 const StyledTextField = styled(TextField)(() => ({
   "& .MuiOutlinedInput-root": {
     borderRadius: "10px",
     backgroundColor: "#090d16",
     color: "#ffffff",
-    height: "42px",
-    "& fieldset": { borderColor: "rgba(255, 255, 255, 0.1)" },
+    height: "44px",
+    "& fieldset": { borderColor: "rgba(255, 255, 255, 0.12)" },
     "&:hover fieldset": { borderColor: "rgba(56, 189, 248, 0.4)" },
     "&.Mui-focused fieldset": {
       borderColor: "#38bdf8",
@@ -1419,6 +1741,11 @@ const StyledTextField = styled(TextField)(() => ({
       filter: "invert(1)",
       cursor: "pointer",
     },
+  },
+  "& .MuiInputLabel-root": {
+    color: "#9ca3af",
+    fontSize: "0.8rem",
+    "&.Mui-focused": { color: "#38bdf8" },
   },
 }));
 
@@ -1450,6 +1777,7 @@ const TableScrollArea = styled(Box)(() => ({
 
 const ItemsTable = styled("table")(() => ({
   width: "100%",
+  minWidth: "720px",
   borderCollapse: "collapse",
   "& thead": {
     backgroundColor: "#111827",
@@ -1463,7 +1791,7 @@ const ItemsTable = styled("table")(() => ({
     fontSize: "0.7rem",
     textTransform: "uppercase",
     letterSpacing: "0.8px",
-    padding: "16px 12px",
+    padding: "14px 12px",
     borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
     textAlign: "left",
     whiteSpace: "nowrap",
@@ -1477,8 +1805,9 @@ const ItemsTable = styled("table")(() => ({
   "& tbody td": {
     color: "#e5e7eb",
     fontSize: "0.85rem",
-    padding: "14px 12px",
+    padding: "12px",
     textAlign: "left",
+    whiteSpace: "nowrap",
   },
 }));
 
@@ -1515,6 +1844,44 @@ const formatMoney = (n: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+const toInputDate = (d: Date) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const getDatePreset = (
+  preset: "thisMonth" | "lastMonth" | "today" | "yesterday"
+): { from: string; to: string } => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+
+  switch (preset) {
+    case "today": {
+      const d = toInputDate(now);
+      return { from: d, to: d };
+    }
+    case "yesterday": {
+      const yest = new Date(now);
+      yest.setDate(now.getDate() - 1);
+      const d = toInputDate(yest);
+      return { from: d, to: d };
+    }
+    case "thisMonth": {
+      const first = new Date(y, m, 1);
+      const last = new Date(y, m + 1, 0);
+      return { from: toInputDate(first), to: toInputDate(last) };
+    }
+    case "lastMonth": {
+      const first = new Date(y, m - 1, 1);
+      const last = new Date(y, m, 0);
+      return { from: toInputDate(first), to: toInputDate(last) };
+    }
+  }
+};
+
 // ===================== MAIN COMPONENT =====================
 
 const SaleList: React.FC = () => {
@@ -1527,8 +1894,6 @@ const SaleList: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // ✅ Grand total from backend (fallback = current page sum)
   const [grandTotal, setGrandTotal] = useState(0);
 
   // Filters
@@ -1536,6 +1901,9 @@ const SaleList: React.FC = () => {
   const [toDate, setToDate] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
   const [appliedTo, setAppliedTo] = useState("");
+  const [activePreset, setActivePreset] = useState<
+    "thisMonth" | "lastMonth" | "today" | "yesterday" | ""
+  >("");
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -1560,7 +1928,6 @@ const SaleList: React.FC = () => {
       if (res.data?.success === true) {
         setData(res.data.data || []);
 
-        // ✅ Support multiple grandTotal key names
         const gt =
           res.data.grandTotal ??
           res.data.totalValue ??
@@ -1614,6 +1981,7 @@ const SaleList: React.FC = () => {
     }
     setAppliedFrom(fromDate);
     setAppliedTo(toDate);
+    setActivePreset("");
     setPage(1);
   };
 
@@ -1622,19 +1990,28 @@ const SaleList: React.FC = () => {
     setToDate("");
     setAppliedFrom("");
     setAppliedTo("");
+    setActivePreset("");
+    setPage(1);
+  };
+
+  const handlePreset = (
+    preset: "thisMonth" | "lastMonth" | "today" | "yesterday"
+  ) => {
+    const { from, to } = getDatePreset(preset);
+    setFromDate(from);
+    setToDate(to);
+    setAppliedFrom(from);
+    setAppliedTo(to);
+    setActivePreset(preset);
     setPage(1);
   };
 
   const hasDateFilter = !!(appliedFrom || appliedTo);
 
-  // ===================== ✅ ANALYTICS (Derived) =====================
+  // ===================== ANALYTICS =====================
   const analytics = useMemo(() => {
     const pageCount = data.length;
-
-    // Current page sum
     const pageSum = data.reduce((s, r) => s + getSaleTotal(r), 0);
-
-    // Use backend grand total if available, else fallback to page sum
     const total = grandTotal > 0 ? grandTotal : pageSum;
 
     const avgPerInvoice =
@@ -1644,20 +2021,11 @@ const SaleList: React.FC = () => {
         ? total / pageCount
         : 0;
 
-    // Total items sold (across current page)
-    const totalItems = data.reduce(
-      (s, r) => s + (r.items?.length || 0),
-      0
-    );
-
-    // Total quantity (across current page)
+    const totalItems = data.reduce((s, r) => s + (r.items?.length || 0), 0);
     const totalQty = data.reduce(
       (s, r) =>
         s +
-        (r.items || []).reduce(
-          (q, i) => q + (Number(i.quantity) || 0),
-          0
-        ),
+        (r.items || []).reduce((q, i) => q + (Number(i.quantity) || 0), 0),
       0
     );
 
@@ -1723,16 +2091,15 @@ const SaleList: React.FC = () => {
     }
   };
 
-  // Current page total
   const pageTotal = data.reduce((s, r) => s + getSaleTotal(r), 0);
 
   // ===================== RENDER =====================
   return (
     <Box
       sx={{
-        height: "85vh",
-        maxHeight: "100vh",
-        overflow: "hidden",
+        minHeight: { xs: "100dvh", md: "85vh" },
+        maxHeight: { md: "100vh" },
+        overflow: { xs: "auto", md: "hidden" },
         bgcolor: "#090d16",
         px: { xs: 1.5, sm: 2, md: 3 },
         py: { xs: 1.5, md: 2.5 },
@@ -1749,7 +2116,7 @@ const SaleList: React.FC = () => {
           mx: "auto",
           display: "flex",
           flexDirection: "column",
-          flex: 1,
+          flex: { md: 1 },
           minHeight: 0,
         }}
       >
@@ -1759,10 +2126,10 @@ const SaleList: React.FC = () => {
             display="flex"
             flexDirection={{ xs: "column", md: "row" }}
             justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
+            alignItems={{ xs: "stretch", md: "center" }}
             gap={2}
           >
-            <Box display="flex" alignItems="center" gap={2}>
+            <Box display="flex" alignItems="center" gap={1.5}>
               <Button
                 variant="outlined"
                 startIcon={<ArrowBack />}
@@ -1774,8 +2141,9 @@ const SaleList: React.FC = () => {
                   textTransform: "none",
                   borderRadius: "10px",
                   px: 2,
-                  py: 0.9,
-                  fontSize: "0.8rem",
+                  py: 0.8,
+                  fontSize: "0.78rem",
+                  minWidth: "auto",
                   "&:hover": {
                     borderColor: "#38bdf8",
                     color: "#38bdf8",
@@ -1786,8 +2154,8 @@ const SaleList: React.FC = () => {
                 Dashboard
               </Button>
 
-              <Box>
-                <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+              <Box sx={{ minWidth: 0 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={0.3}>
                   <FiberManualRecord sx={{ fontSize: 10, color: "#10b981" }} />
                   <Typography
                     variant="caption"
@@ -1806,8 +2174,9 @@ const SaleList: React.FC = () => {
                   variant="h5"
                   fontWeight="800"
                   sx={{
-                    fontSize: { xs: "1.1rem", sm: "1.4rem", md: "1.6rem" },
+                    fontSize: { xs: "1rem", sm: "1.35rem", md: "1.55rem" },
                     letterSpacing: 0.5,
+                    lineHeight: 1.2,
                   }}
                 >
                   Load Vehicle Details
@@ -1816,7 +2185,7 @@ const SaleList: React.FC = () => {
                 {totalEntries > 0 && (
                   <Typography
                     variant="caption"
-                    sx={{ color: "#9ca3af", mt: 0.5 }}
+                    sx={{ color: "#9ca3af", mt: 0.3, display: "block" }}
                   >
                     {totalEntries} total entries
                   </Typography>
@@ -1824,7 +2193,15 @@ const SaleList: React.FC = () => {
               </Box>
             </Box>
 
-            <Box display="flex" gap={1} flexWrap="wrap">
+            <Box
+              display="flex"
+              gap={1}
+              flexWrap="wrap"
+              sx={{
+                width: { xs: "100%", md: "auto" },
+                justifyContent: { xs: "stretch", md: "flex-end" },
+              }}
+            >
               <Button
                 variant="contained"
                 startIcon={<AddIcon />}
@@ -1837,8 +2214,9 @@ const SaleList: React.FC = () => {
                   borderRadius: "10px",
                   px: 2.5,
                   py: 1,
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
                   boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
+                  flex: { xs: "1 1 45%", sm: "none" },
                   "&:hover": { bgcolor: "#059669" },
                 }}
               >
@@ -1858,7 +2236,8 @@ const SaleList: React.FC = () => {
                   borderRadius: "10px",
                   px: 2.5,
                   py: 1,
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
+                  flex: { xs: "1 1 45%", sm: "none" },
                   "&:hover": {
                     borderColor: "#38bdf8",
                     color: "#38bdf8",
@@ -1882,7 +2261,8 @@ const SaleList: React.FC = () => {
                   borderRadius: "10px",
                   px: 2.5,
                   py: 1,
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
+                  flex: { xs: "1 1 100%", sm: "none" },
                   "&:hover": {
                     borderColor: "#f43f5e",
                     bgcolor: "rgba(244, 63, 94, 0.08)",
@@ -1899,10 +2279,9 @@ const SaleList: React.FC = () => {
           </Box>
         </DarkBanner>
 
-        {/* ================= ANALYTICAL SUMMARY BAR (NEW) ================= */}
+        {/* ================= ANALYTICAL SUMMARY BAR ================= */}
         <AnalyticsBar>
           <Grid container spacing={1.5}>
-            {/* TOTAL SALES VALUE */}
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <StatCard accent="#34d399">
                 <Box
@@ -1936,7 +2315,7 @@ const SaleList: React.FC = () => {
                     sx={{
                       color: "#34d399",
                       fontWeight: 900,
-                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      fontSize: { xs: "1rem", sm: "1.15rem" },
                       mt: 0.3,
                       letterSpacing: 0.3,
                       textShadow: "0 0 14px rgba(52, 211, 153, 0.35)",
@@ -1949,7 +2328,6 @@ const SaleList: React.FC = () => {
               </StatCard>
             </Grid>
 
-            {/* TOTAL ENTRIES */}
             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <StatCard accent="#38bdf8">
                 <Box
@@ -1983,7 +2361,7 @@ const SaleList: React.FC = () => {
                     sx={{
                       color: "#38bdf8",
                       fontWeight: 900,
-                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      fontSize: { xs: "1rem", sm: "1.15rem" },
                       mt: 0.3,
                       letterSpacing: 0.3,
                       lineHeight: 1.1,
@@ -1995,7 +2373,6 @@ const SaleList: React.FC = () => {
               </StatCard>
             </Grid>
 
-            {/* TOTAL ITEMS SOLD */}
             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <StatCard accent="#c084fc">
                 <Box
@@ -2029,7 +2406,7 @@ const SaleList: React.FC = () => {
                     sx={{
                       color: "#c084fc",
                       fontWeight: 900,
-                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      fontSize: { xs: "1rem", sm: "1.15rem" },
                       mt: 0.3,
                       letterSpacing: 0.3,
                       lineHeight: 1.1,
@@ -2051,7 +2428,6 @@ const SaleList: React.FC = () => {
               </StatCard>
             </Grid>
 
-            {/* AVG / INVOICE */}
             <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <StatCard accent="#fbbf24">
                 <Box
@@ -2085,7 +2461,7 @@ const SaleList: React.FC = () => {
                     sx={{
                       color: "#fbbf24",
                       fontWeight: 900,
-                      fontSize: { xs: "1.05rem", sm: "1.2rem" },
+                      fontSize: { xs: "1rem", sm: "1.15rem" },
                       mt: 0.3,
                       letterSpacing: 0.3,
                       lineHeight: 1.1,
@@ -2101,107 +2477,177 @@ const SaleList: React.FC = () => {
 
         {/* ================= FILTER BAR ================= */}
         <FilterBar>
-          <Box display="flex" alignItems="center" flexWrap="wrap" gap={1.5}>
-            <StyledTextField
-              type="date"
-              size="small"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              sx={{ width: 160 }}
-            />
-            <Typography sx={{ color: "#6b7280", fontSize: "0.8rem" }}>
-              to
-            </Typography>
-            <StyledTextField
-              type="date"
-              size="small"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              sx={{ width: 160 }}
-            />
-
-            <Button
-              size="small"
-              variant="contained"
-              onClick={handleApplyDateFilter}
-              sx={{
-                bgcolor: "#10b981",
-                color: "#fff",
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: "8px",
-                px: 2,
-                fontSize: "0.75rem",
-                "&:hover": { bgcolor: "#059669" },
-              }}
-            >
-              Apply
-            </Button>
-
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={handleClearDateFilter}
-              disabled={!hasDateFilter && !fromDate && !toDate}
-              sx={{
-                color: "#9ca3af",
-                borderColor: "rgba(255, 255, 255, 0.15)",
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: "8px",
-                px: 2,
-                fontSize: "0.75rem",
-                "&:hover": {
-                  borderColor: "#f43f5e",
-                  color: "#f43f5e",
-                  bgcolor: "rgba(244, 63, 94, 0.08)",
-                },
-              }}
-            >
-              Reset
-            </Button>
-
-            {hasDateFilter && (
-              <Chip
-                label={`Active: ${appliedFrom || "..."} → ${appliedTo || "..."}`}
+          {/* Row 1: From / To date pickers */}
+          <Grid container spacing={1.5}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <StyledTextField
+                type="date"
                 size="small"
-                sx={{
-                  bgcolor: "rgba(56, 189, 248, 0.15)",
-                  color: "#38bdf8",
-                  border: "1px solid rgba(56, 189, 248, 0.4)",
-                  fontWeight: 700,
-                  fontSize: "0.7rem",
-                  height: "26px",
-                }}
+                fullWidth
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                label="From"
               />
-            )}
-
-            {pageTotal > 0 && (
-              <Box
-                sx={{
-                  ml: { md: "auto" },
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  bgcolor: "rgba(56, 189, 248, 0.1)",
-                  border: "1px solid rgba(56, 189, 248, 0.3)",
-                  borderRadius: "10px",
-                  px: 2,
-                  py: 0.8,
-                }}
-              >
-                <ShoppingCart sx={{ fontSize: 16, color: "#38bdf8" }} />
-                <Typography
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <StyledTextField
+                type="date"
+                size="small"
+                fullWidth
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                label="To"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+              <Box display="flex" gap={1} sx={{ height: "100%" }}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  fullWidth
+                  onClick={handleApplyDateFilter}
                   sx={{
-                    color: "#38bdf8",
+                    bgcolor: "#10b981",
+                    color: "#fff",
                     fontWeight: 700,
-                    fontSize: "0.8rem",
+                    textTransform: "none",
+                    borderRadius: "10px",
+                    py: 1.1,
+                    fontSize: "0.78rem",
+                    "&:hover": { bgcolor: "#059669" },
                   }}
                 >
-                  Page Total: ₹ {pageTotal.toLocaleString()}
-                </Typography>
+                  Apply
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  onClick={handleClearDateFilter}
+                  disabled={!hasDateFilter && !fromDate && !toDate}
+                  sx={{
+                    color: "#9ca3af",
+                    borderColor: "rgba(255, 255, 255, 0.15)",
+                    fontWeight: 700,
+                    textTransform: "none",
+                    borderRadius: "10px",
+                    py: 1.1,
+                    fontSize: "0.78rem",
+                    "&:hover": {
+                      borderColor: "#f43f5e",
+                      color: "#f43f5e",
+                      bgcolor: "rgba(244, 63, 94, 0.08)",
+                    },
+                  }}
+                >
+                  Reset
+                </Button>
               </Box>
-            )}
+            </Grid>
+          </Grid>
+
+          {/* Row 2: Quick filter chips */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              flexWrap: "wrap",
+              mt: 1.5,
+              alignItems: "center",
+            }}
+          >
+            <Typography
+              sx={{
+                color: "#9ca3af",
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                mr: 0.5,
+              }}
+            >
+              Quick:
+            </Typography>
+
+            <QuickFilterChip
+              active={activePreset === "thisMonth"}
+              onClick={() => handlePreset("thisMonth")}
+            >
+              This Month
+            </QuickFilterChip>
+            <QuickFilterChip
+              active={activePreset === "lastMonth"}
+              onClick={() => handlePreset("lastMonth")}
+            >
+              Last Month
+            </QuickFilterChip>
+            <QuickFilterChip
+              active={activePreset === "today"}
+              onClick={() => handlePreset("today")}
+            >
+              Today
+            </QuickFilterChip>
+            <QuickFilterChip
+              active={activePreset === "yesterday"}
+              onClick={() => handlePreset("yesterday")}
+            >
+              Yesterday
+            </QuickFilterChip>
+
+            {/* Active filter chip + page total on right */}
+            <Box
+              sx={{
+                ml: { md: "auto" },
+                display: "flex",
+                gap: 1,
+                alignItems: "center",
+                flexWrap: "wrap",
+                mt: { xs: 1, md: 0 },
+              }}
+            >
+              {hasDateFilter && (
+                <Chip
+                  label={`${appliedFrom || "..."} → ${appliedTo || "..."}`}
+                  size="small"
+                  onDelete={handleClearDateFilter}
+                  sx={{
+                    bgcolor: "rgba(56, 189, 248, 0.15)",
+                    color: "#38bdf8",
+                    border: "1px solid rgba(56, 189, 248, 0.4)",
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    height: "28px",
+                    "& .MuiChip-deleteIcon": {
+                      color: "#38bdf8",
+                      "&:hover": { color: "#f43f5e" },
+                    },
+                  }}
+                />
+              )}
+
+              {pageTotal > 0 && (
+                <Chip
+                  icon={
+                    <ShoppingCart
+                      sx={{ fontSize: 16, color: "#38bdf8 !important" }}
+                    />
+                  }
+                  label={`Page Total: ₹ ${pageTotal.toLocaleString()}`}
+                  size="small"
+                  sx={{
+                    bgcolor: "rgba(56, 189, 248, 0.1)",
+                    color: "#38bdf8",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    fontWeight: 700,
+                    fontSize: "0.72rem",
+                    height: "28px",
+                  }}
+                />
+              )}
+            </Box>
           </Box>
         </FilterBar>
 
@@ -2211,8 +2657,10 @@ const SaleList: React.FC = () => {
             display="flex"
             justifyContent="space-between"
             alignItems="center"
-            px={3}
-            py={2}
+            flexWrap="wrap"
+            gap={1}
+            px={{ xs: 2, sm: 3 }}
+            py={1.8}
             sx={{
               borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
               flexShrink: 0,
@@ -2222,7 +2670,7 @@ const SaleList: React.FC = () => {
               sx={{
                 color: "#ffffff",
                 fontWeight: 800,
-                fontSize: "0.95rem",
+                fontSize: { xs: "0.85rem", sm: "0.95rem" },
                 letterSpacing: 0.5,
               }}
             >
@@ -2356,7 +2804,7 @@ const SaleList: React.FC = () => {
                             sx={{
                               color: "#34d399",
                               fontWeight: 800,
-                              fontSize: "0.95rem",
+                              fontSize: "0.9rem",
                             }}
                           >
                             ₹ {rowTotal.toLocaleString()}
@@ -2426,17 +2874,17 @@ const SaleList: React.FC = () => {
               alignItems: "center",
               flexWrap: "wrap",
               gap: 1.5,
-              px: 3,
-              py: 1.8,
+              px: { xs: 2, sm: 3 },
+              py: 1.6,
               borderTop: "1px solid rgba(255, 255, 255, 0.08)",
               flexShrink: 0,
             }}
           >
-            <Box display="flex" alignItems="center" gap={1.5}>
+            <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
               <Typography
-                sx={{ color: "#9ca3af", fontSize: "0.75rem", fontWeight: 600 }}
+                sx={{ color: "#9ca3af", fontSize: "0.72rem", fontWeight: 600 }}
               >
-                Rows per page:
+                Rows:
               </Typography>
               {[10, 25, 50, 100].map((n) => (
                 <Chip
@@ -2465,7 +2913,7 @@ const SaleList: React.FC = () => {
                 />
               ))}
               <Typography
-                sx={{ color: "#6b7280", fontSize: "0.75rem", ml: 1 }}
+                sx={{ color: "#6b7280", fontSize: "0.72rem", ml: 0.5 }}
               >
                 {totalEntries > 0
                   ? `${(page - 1) * limit + 1}–${Math.min(
@@ -2488,7 +2936,7 @@ const SaleList: React.FC = () => {
                   color: "#9ca3af",
                   borderColor: "rgba(255, 255, 255, 0.1)",
                   fontWeight: 700,
-                  fontSize: "0.8rem",
+                  fontSize: "0.78rem",
                   "&:hover": {
                     bgcolor: "rgba(56, 189, 248, 0.1)",
                     color: "#38bdf8",
@@ -2516,8 +2964,8 @@ const SaleList: React.FC = () => {
             zIndex: 1200,
             bgcolor: "#38bdf8",
             color: "#0d1527",
-            width: 52,
-            height: 52,
+            width: 50,
+            height: 50,
             boxShadow: "0 8px 24px rgba(56, 189, 248, 0.45)",
             "&:hover": { bgcolor: "#0ea5e9" },
           }}
@@ -2538,6 +2986,8 @@ const SaleList: React.FC = () => {
             borderRadius: "16px",
             border: "1px solid rgba(255, 255, 255, 0.08)",
             backgroundImage: "none",
+            m: { xs: 1.5, sm: 4 },
+            width: { xs: "calc(100% - 24px)", sm: "100%" },
           },
         }}
       >
@@ -2547,11 +2997,12 @@ const SaleList: React.FC = () => {
               sx={{
                 color: "#ffffff",
                 fontWeight: 800,
-                fontSize: "1.1rem",
+                fontSize: { xs: "0.95rem", sm: "1.1rem" },
                 borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                px: { xs: 2, sm: 3 },
               }}
             >
               <Box display="flex" alignItems="center" gap={1.5}>
@@ -2565,6 +3016,7 @@ const SaleList: React.FC = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
                   <ViewIcon sx={{ fontSize: 18 }} />
@@ -2574,7 +3026,7 @@ const SaleList: React.FC = () => {
                     sx={{
                       color: "#38bdf8",
                       fontWeight: 800,
-                      fontSize: "0.9rem",
+                      fontSize: "0.85rem",
                       letterSpacing: 1,
                       textTransform: "uppercase",
                     }}
@@ -2584,7 +3036,7 @@ const SaleList: React.FC = () => {
                   <Typography
                     sx={{
                       color: "#9ca3af",
-                      fontSize: "0.72rem",
+                      fontSize: "0.7rem",
                       fontWeight: 500,
                     }}
                   >
@@ -2607,16 +3059,48 @@ const SaleList: React.FC = () => {
               </IconButton>
             </DialogTitle>
 
-            <DialogContent sx={{ p: 3 }}>
+            <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
               <Box
                 sx={{
                   bgcolor: "#111827",
                   borderRadius: "12px",
                   border: "1px solid rgba(255, 255, 255, 0.08)",
-                  overflow: "hidden",
+                  overflowX: "auto",
                 }}
               >
-                <ItemsTable>
+                <Box
+                  component="table"
+                  sx={{
+                    width: "100%",
+                    minWidth: "560px",
+                    borderCollapse: "collapse",
+                    "& thead": {
+                      backgroundColor: "#111827",
+                    },
+                    "& thead th": {
+                      color: "#9ca3af",
+                      fontWeight: 700,
+                      fontSize: "0.7rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.8px",
+                      padding: "12px",
+                      borderBottom:
+                        "1px solid rgba(255, 255, 255, 0.08)",
+                      textAlign: "left",
+                      whiteSpace: "nowrap",
+                    },
+                    "& tbody tr": {
+                      borderBottom:
+                        "1px solid rgba(255, 255, 255, 0.05)",
+                    },
+                    "& tbody td": {
+                      color: "#e5e7eb",
+                      fontSize: "0.82rem",
+                      padding: "12px",
+                      whiteSpace: "nowrap",
+                    },
+                  }}
+                >
                   <thead>
                     <tr>
                       <th style={{ textAlign: "center" }}>#</th>
@@ -2636,7 +3120,7 @@ const SaleList: React.FC = () => {
                             sx={{
                               color: "#ffffff",
                               fontWeight: 600,
-                              fontSize: "0.85rem",
+                              fontSize: "0.82rem",
                             }}
                           >
                             {item.itemName}
@@ -2652,7 +3136,7 @@ const SaleList: React.FC = () => {
                             sx={{
                               color: "#34d399",
                               fontWeight: 700,
-                              fontSize: "0.85rem",
+                              fontSize: "0.82rem",
                             }}
                           >
                             ₹ {getItemTotal(item).toLocaleString()}
@@ -2661,7 +3145,7 @@ const SaleList: React.FC = () => {
                       </tr>
                     ))}
                   </tbody>
-                </ItemsTable>
+                </Box>
               </Box>
 
               <Box sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}>
@@ -2670,21 +3154,21 @@ const SaleList: React.FC = () => {
                     bgcolor: "rgba(52, 211, 153, 0.1)",
                     border: "1px solid rgba(52, 211, 153, 0.3)",
                     borderRadius: "12px",
-                    px: 3,
-                    py: 1.5,
+                    px: 2.5,
+                    py: 1.2,
                     display: "flex",
                     alignItems: "center",
-                    gap: 2,
+                    gap: 1.5,
                   }}
                 >
-                  <Typography sx={{ color: "#9ca3af", fontSize: "0.8rem" }}>
+                  <Typography sx={{ color: "#9ca3af", fontSize: "0.78rem" }}>
                     Grand Total:
                   </Typography>
                   <Typography
                     sx={{
                       color: "#34d399",
                       fontWeight: 800,
-                      fontSize: "1.3rem",
+                      fontSize: "1.2rem",
                     }}
                   >
                     ₹ {getSaleTotal(selectedSale).toLocaleString()}
@@ -2695,7 +3179,7 @@ const SaleList: React.FC = () => {
 
             <DialogActions
               sx={{
-                p: 2.5,
+                p: { xs: 2, sm: 2.5 },
                 borderTop: "1px solid rgba(255, 255, 255, 0.08)",
                 gap: 1,
               }}
@@ -2744,6 +3228,8 @@ const SaleList: React.FC = () => {
             bgcolor: "#111827",
             borderRadius: "16px",
             border: "1px solid rgba(255, 255, 255, 0.08)",
+            m: { xs: 1.5, sm: 4 },
+            width: { xs: "calc(100% - 24px)", sm: "100%" },
           },
         }}
       >
@@ -2790,6 +3276,8 @@ const SaleList: React.FC = () => {
             bgcolor: "#111827",
             borderRadius: "16px",
             border: "1px solid rgba(255, 255, 255, 0.08)",
+            m: { xs: 1.5, sm: 4 },
+            width: { xs: "calc(100% - 24px)", sm: "100%" },
           },
         }}
       >
