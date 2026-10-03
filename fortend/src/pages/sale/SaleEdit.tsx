@@ -28,7 +28,7 @@ import {
   ReceiptLong,
   Check as CheckIcon,
   Close as CloseIcon,
-  AltRoute,
+
 } from "@mui/icons-material";
 
 interface Product {
@@ -229,7 +229,7 @@ const SaleEdit: React.FC = () => {
         ...getAuthHeaders(),
       });
       if (res.data?.success) {
-        const unique = Array.from(
+        const unique:any = Array.from(
           new Set(
             (res.data.data || [])
               .map((d: any) => String(d.route || "").trim())

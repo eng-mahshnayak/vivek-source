@@ -348,7 +348,7 @@ const SaleList: React.FC = () => {
         ...getAuthHeaders(),
       });
       if (res.data?.success) {
-        const uniqueRoutes = Array.from(
+        const uniqueRoutes:any = Array.from(
           new Set(
             (res.data.data || [])
               .map((d: any) => String(d.route || "").trim())
