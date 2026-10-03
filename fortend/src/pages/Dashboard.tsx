@@ -875,7 +875,7 @@ const Dashboard: React.FC = () => {
     },
     {
       id: "8",
-      title: "8. VIEW SETTLEMENT",
+      title: "8. VIEW Statement",
       desc: "Detailed route settlement view",
       badgeText: "Report",
       badgeBg: "#0f2f2c",

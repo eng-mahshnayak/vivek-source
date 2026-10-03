@@ -5,15 +5,6 @@ const expenseSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, "Expense category is required"],
-      enum: [
-        "Diesel / Fuel",
-        "Toll / Parking",
-        "Driver Allowance",
-        "Food / Refreshment",
-        "Vehicle Repair",
-        "Loading / Unloading",
-        "Other",
-      ],
       trim: true,
     },
 

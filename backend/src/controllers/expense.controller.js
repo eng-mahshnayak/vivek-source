@@ -1,14 +1,98 @@
 const Expense = require("../models/expense.model");
+const Category = require("../models/categoryForExpense.model");
 
 // =============================
-// CREATE EXPENSE
-// POST /api/expense
+// HELPER: ensure category exists
+// =============================
+const ensureCategory = async (name) => {
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+  const existing = await Category.findOne({
+    name: { $regex: new RegExp(`^${trimmed}$`, "i") },
+  });
+  if (!existing) {
+    await Category.create({ name: trimmed });
+  }
+};
+
+// =============================
+// CATEGORY: GET ALL
+// GET /api/expense/categories?search=
+// =============================
+const getAllCategories = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const filter = {};
+    if (search && search.trim()) {
+      filter.name = { $regex: new RegExp(search.trim(), "i") };
+    }
+    const categories = await Category.find(filter).sort({ name: 1 });
+    res.json({
+      success: true,
+      statusCode: 200,
+      count: categories.length,
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Get Categories Error:", error);
+    res.json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error",
+    });
+  }
+};
+
+// =============================
+// CATEGORY: CREATE
+// POST /api/expense/categories
+// =============================
+const createCategory = async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.json({
+        success: false,
+        statusCode: 400,
+        message: "Category name required",
+      });
+    }
+    const trimmed = name.trim();
+    let existing = await Category.findOne({
+      name: { $regex: new RegExp(`^${trimmed}$`, "i") },
+    });
+    if (existing) {
+      return res.json({
+        success: true,
+        statusCode: 200,
+        message: "Category already exists",
+        data: existing,
+      });
+    }
+    const category = await Category.create({ name: trimmed });
+    res.json({
+      success: true,
+      statusCode: 201,
+      message: "Category created",
+      data: category,
+    });
+  } catch (error) {
+    console.error("Create Category Error:", error);
+    res.json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error",
+    });
+  }
+};
+
+// =============================
+// CREATE EXPENSE (single entry)
 // =============================
 const createExpense = async (req, res) => {
   try {
     const { category, description, paidVia, amount, date } = req.body;
 
-    // Validation
     if (!category) {
       return res.json({
         success: false,
@@ -38,8 +122,11 @@ const createExpense = async (req, res) => {
       });
     }
 
+    // Auto-create category if not present
+    await ensureCategory(category);
+
     const expense = await Expense.create({
-      category,
+      category: category.trim(),
       description: description.trim(),
       paidVia,
       amount: Number(amount),
@@ -54,7 +141,6 @@ const createExpense = async (req, res) => {
     });
   } catch (error) {
     console.error("Create Expense Error:", error);
-
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((err) => err.message);
       return res.json({
@@ -64,7 +150,6 @@ const createExpense = async (req, res) => {
         errors: messages,
       });
     }
-
     res.json({
       success: false,
       statusCode: 500,
@@ -74,8 +159,66 @@ const createExpense = async (req, res) => {
 };
 
 // =============================
-// GET ALL EXPENSES (with pagination & filters)
-// GET /api/expense?page=1&limit=25&from=&to=&category=&search=
+// CREATE BULK (multiple entries)
+// POST /api/expense/bulk
+// body: { items: [{ category, description, paidVia, amount, date }] }
+// =============================
+const createBulkExpenses = async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.json({
+        success: false,
+        statusCode: 400,
+        message: "Items array required",
+      });
+    }
+
+    const created = [];
+    const errors = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      try {
+        if (!it.category || !it.description || !it.paidVia || !it.amount) {
+          throw new Error("Missing required fields");
+        }
+        await ensureCategory(it.category);
+        const doc = await Expense.create({
+          category: it.category.trim(),
+          description: it.description.trim(),
+          paidVia: it.paidVia,
+          amount: Number(it.amount),
+          date: it.date ? new Date(it.date) : new Date(),
+        });
+        created.push(doc);
+      } catch (err) {
+        errors.push({ index: i, message: err.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      statusCode: 201,
+      message: `${created.length} entries added`,
+      createdCount: created.length,
+      errorCount: errors.length,
+      errors,
+      data: created,
+    });
+  } catch (error) {
+    console.error("Bulk Create Error:", error);
+    res.json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error",
+    });
+  }
+};
+
+// =============================
+// GET ALL EXPENSES
+// GET /api/expense?page=1&limit=25&from=&to=&category=&search=&paidVia=
 // =============================
 const getAllExpenses = async (req, res) => {
   try {
@@ -83,11 +226,10 @@ const getAllExpenses = async (req, res) => {
     const limit = parseInt(req.query.limit) || 25;
     const skip = (page - 1) * limit;
 
-    const { from, to, category, search } = req.query;
+    const { from, to, category, search, paidVia } = req.query;
 
     let filter = {};
 
-    // Date range
     if (from || to) {
       filter.date = {};
       if (from) filter.date.$gte = new Date(from);
@@ -98,10 +240,9 @@ const getAllExpenses = async (req, res) => {
       }
     }
 
-    // Category filter
-    if (category) filter.category = category;
+    if (category && category.trim()) filter.category = category.trim();
+    if (paidVia && paidVia.trim()) filter.paidVia = paidVia.trim();
 
-    // Search by description
     if (search && search.trim() !== "") {
       filter.description = { $regex: new RegExp(search.trim(), "i") };
     }
@@ -113,12 +254,36 @@ const getAllExpenses = async (req, res) => {
 
     const total = await Expense.countDocuments(filter);
 
-    // Sum of amounts
     const totalAggregation = await Expense.aggregate([
       { $match: filter },
       { $group: { _id: null, sum: { $sum: "$amount" } } },
     ]);
     const grandTotal = totalAggregation[0]?.sum || 0;
+
+    // Category breakdown (based on current filter)
+    const categoryBreakdown = await Expense.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$category",
+          total: { $sum: "$amount" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { total: -1 } },
+    ]);
+
+    // PaidVia breakdown
+    const paidViaBreakdown = await Expense.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$paidVia",
+          total: { $sum: "$amount" },
+        },
+      },
+      { $sort: { total: -1 } },
+    ]);
 
     res.json({
       success: true,
@@ -126,6 +291,8 @@ const getAllExpenses = async (req, res) => {
       count: expenses.length,
       total,
       grandTotal,
+      categoryBreakdown,
+      paidViaBreakdown,
       page,
       limit,
       pages: Math.ceil(total / limit),
@@ -142,13 +309,11 @@ const getAllExpenses = async (req, res) => {
 };
 
 // =============================
-// GET EXPENSE BY ID
-// GET /api/expense/:id
+// GET ONE
 // =============================
 const getExpenseById = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
-
     if (!expense) {
       return res.json({
         success: false,
@@ -156,23 +321,16 @@ const getExpenseById = async (req, res) => {
         message: "Expense not found",
       });
     }
-
-    res.json({
-      success: true,
-      statusCode: 200,
-      data: expense,
-    });
+    res.json({ success: true, statusCode: 200, data: expense });
   } catch (error) {
-    console.error("Get Expense By ID Error:", error);
-
+    console.error("Get Expense Error:", error);
     if (error.kind === "ObjectId") {
       return res.json({
         success: false,
         statusCode: 400,
-        message: "Invalid expense ID",
+        message: "Invalid ID",
       });
     }
-
     res.json({
       success: false,
       statusCode: 500,
@@ -182,15 +340,13 @@ const getExpenseById = async (req, res) => {
 };
 
 // =============================
-// UPDATE EXPENSE
-// PUT /api/expense/:id
+// UPDATE
 // =============================
 const updateExpense = async (req, res) => {
   try {
     const { category, description, paidVia, amount, date } = req.body;
 
     let expense = await Expense.findById(req.params.id);
-
     if (!expense) {
       return res.json({
         success: false,
@@ -208,7 +364,10 @@ const updateExpense = async (req, res) => {
     }
 
     const updateData = {};
-    if (category) updateData.category = category;
+    if (category) {
+      updateData.category = category.trim();
+      await ensureCategory(category);
+    }
     if (description !== undefined) updateData.description = description.trim();
     if (paidVia) updateData.paidVia = paidVia;
     if (amount !== undefined) updateData.amount = Number(amount);
@@ -222,12 +381,11 @@ const updateExpense = async (req, res) => {
     res.json({
       success: true,
       statusCode: 200,
-      message: "Expense updated successfully",
+      message: "Expense updated",
       data: expense,
     });
   } catch (error) {
-    console.error("Update Expense Error:", error);
-
+    console.error("Update Error:", error);
     if (error.name === "ValidationError") {
       const messages = Object.values(error.errors).map((err) => err.message);
       return res.json({
@@ -237,15 +395,6 @@ const updateExpense = async (req, res) => {
         errors: messages,
       });
     }
-
-    if (error.kind === "ObjectId") {
-      return res.json({
-        success: false,
-        statusCode: 400,
-        message: "Invalid expense ID",
-      });
-    }
-
     res.json({
       success: false,
       statusCode: 500,
@@ -255,13 +404,11 @@ const updateExpense = async (req, res) => {
 };
 
 // =============================
-// DELETE EXPENSE
-// DELETE /api/expense/:id
+// DELETE ONE
 // =============================
 const deleteExpense = async (req, res) => {
   try {
     const expense = await Expense.findById(req.params.id);
-
     if (!expense) {
       return res.json({
         success: false,
@@ -269,25 +416,21 @@ const deleteExpense = async (req, res) => {
         message: "Expense not found",
       });
     }
-
     await expense.deleteOne();
-
     res.json({
       success: true,
       statusCode: 200,
-      message: "Expense deleted successfully",
+      message: "Expense deleted",
     });
   } catch (error) {
-    console.error("Delete Expense Error:", error);
-
+    console.error("Delete Error:", error);
     if (error.kind === "ObjectId") {
       return res.json({
         success: false,
         statusCode: 400,
-        message: "Invalid expense ID",
+        message: "Invalid ID",
       });
     }
-
     res.json({
       success: false,
       statusCode: 500,
@@ -297,21 +440,19 @@ const deleteExpense = async (req, res) => {
 };
 
 // =============================
-// DELETE ALL EXPENSES
-// DELETE /api/expense/delete-all
+// DELETE ALL
 // =============================
 const deleteAllExpenses = async (req, res) => {
   try {
     const result = await Expense.deleteMany({});
-
     res.json({
       success: true,
       statusCode: 200,
-      message: `${result.deletedCount} expenses deleted successfully`,
+      message: `${result.deletedCount} expenses deleted`,
       deletedCount: result.deletedCount,
     });
   } catch (error) {
-    console.error("Delete All Expenses Error:", error);
+    console.error("Delete All Error:", error);
     res.json({
       success: false,
       statusCode: 500,
@@ -322,9 +463,12 @@ const deleteAllExpenses = async (req, res) => {
 
 module.exports = {
   createExpense,
+  createBulkExpenses,
   getAllExpenses,
   getExpenseById,
   updateExpense,
   deleteExpense,
   deleteAllExpenses,
+  getAllCategories,
+  createCategory,
 };
