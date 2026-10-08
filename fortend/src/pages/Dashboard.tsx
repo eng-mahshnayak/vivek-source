@@ -3,7 +3,6 @@
 
 
 
-
 // import React, { useEffect, useState } from "react";
 // import { useNavigate } from "react-router-dom";
 // import axios from "axios";
@@ -31,6 +30,7 @@
 //   Inventory2,
 //   People,
 //   ReceiptLong,
+//   AltRoute,
 // } from "@mui/icons-material";
 
 // // ===================== STYLED DARK COMPONENTS =====================
@@ -63,7 +63,7 @@
 //   boxShadow: "0 6px 16px rgba(0, 0, 0, 0.35)",
 //   transition: "all 0.3s ease",
 //   height: "100%",
-//   minHeight: "190px",          // 🔥 YE ADD KARO
+//   minHeight: "170px",
 //   position: "relative",
 //   overflow: "hidden",
 //   "&:hover": {
@@ -87,12 +87,11 @@
 //   })
 // );
 
-// // 🔥 Cards scroll area — poora flex chain complete
 // const CardsScrollArea = styled(Box)(() => ({
 //   overflowY: "auto",
 //   overflowX: "hidden",
 //   flex: 1,
-//   minHeight: 0, // 🔥 critical
+//   minHeight: 0,
 //   paddingRight: "6px",
 //   paddingBottom: "8px",
 //   "&::-webkit-scrollbar": { width: "8px" },
@@ -109,8 +108,7 @@
 // const Dashboard: React.FC = () => {
 //   const navigate = useNavigate();
 
-
-//    const [dashboardData, setDashboardData] = useState({
+//   const [dashboardData, setDashboardData] = useState({
 //     loadedStock: 0,
 //     returnsUnsold: 0,
 //     creditPayments: 0,
@@ -119,14 +117,11 @@
 
 //   const [loading, setLoading] = useState(false);
 
-
 //   console.log(loading);
-  
 
 //   // =============================
 //   // Get Dashboard Summary
 //   // =============================
-
 //   const getDashboardSummary = async () => {
 //     try {
 //       setLoading(true);
@@ -140,82 +135,50 @@
 //         "=========== Dashboard API Response ==========="
 //       );
 
-//        console.log(
-//         response.data.data.loadItem,
-//         "=========== Dashboard API Response ==========="
-//       );
-
-
 //       if (response.data?.success) {
 //         setDashboardData({
-//           loadedStock: Number(
-//             response.data.data?.loadItem || 0
-//           ),
-
-//           returnsUnsold: Number(
-//             response.data.data?.returnItem || 0
-//           ),
-
-//           creditPayments: Number(
-//             response.data.data?.creditCustomer || 0
-//           ),
-
-//           cashNotesExpenses: Number(
-//             response.data.data?.noteSummary || 0
-//           ),
+//           loadedStock: Number(response.data.data?.loadItem || 0),
+//           returnsUnsold: Number(response.data.data?.returnItem || 0),
+//           creditPayments: Number(response.data.data?.creditCustomer || 0),
+//           cashNotesExpenses: Number(response.data.data?.noteSummary || 0),
 //         });
 //       }
 //     } catch (error) {
-//       console.error(
-//         "Dashboard Summary API Error:",
-//         error
-//       );
+//       console.error("Dashboard Summary API Error:", error);
 //     } finally {
 //       setLoading(false);
 //     }
 //   };
 
-//   // =============================
-//   // Call API when Dashboard loads
-//   // =============================
-
 //   useEffect(() => {
 //     getDashboardSummary();
 //   }, []);
 
-
-
 //   // =============================
 //   // Summary Metrics
 //   // =============================
-
 //   const summaryMetrics = [
 //     {
 //       label: "Today Loaded Stock",
 //       amount: `₹ ${dashboardData.loadedStock.toFixed(2)}`,
 //       color: "#34d399",
 //     },
-
 //     {
 //       label: "Today Returns & Unsold",
 //       amount: `₹ ${dashboardData.returnsUnsold.toFixed(2)}`,
 //       color: "#38bdf8",
 //     },
-
 //     {
 //       label: "Today Credit Customer",
 //       amount: `₹ ${dashboardData.creditPayments.toFixed(2)}`,
 //       color: "#fbbf24",
 //     },
-
 //     {
 //       label: "Today Notes Summary",
 //       amount: `₹ ${dashboardData.cashNotesExpenses.toFixed(2)}`,
 //       color: "#c084fc",
 //     },
 //   ];
-
-
 
 //   const quickActions = [
 //     {
@@ -311,7 +274,7 @@
 //     },
 //     {
 //       id: "8",
-//       title: "8. VIEW SETTLEMENT",
+//       title: "8. VIEW Statement",
 //       desc: "Detailed route settlement view",
 //       badgeText: "Report",
 //       badgeBg: "#0f2f2c",
@@ -320,16 +283,29 @@
 //       icon: <Visibility />,
 //       iconBg: "#0f2f2c",
 //       iconColor: "#2dd4bf",
-//       route: "/final-calculation",
+//       route: "/view-settlement",
+//     },
+//     {
+//       id: "9",
+//       title: "9. ROUTE & DIRECTION / SALE",
+//       desc: "Manage vehicle route, direction & sale",
+//       badgeText: "Route & Sale",
+//       badgeBg: "#0f2f2c",
+//       badgeColor: "#2dd4bf",
+//       amountText: "Open module",
+//       icon: <AltRoute />,
+//       iconBg: "#0f2f2c",
+//       iconColor: "#2dd4bf",
+//       route: "/route-direction-sale",
 //     },
 //   ];
 
 //   return (
 //     <Box
 //       sx={{
-//         height: "85vh",
-//         maxHeight: "100vh",
-//         overflow: "hidden",
+//         minHeight: { xs: "100dvh", md: "85vh" },
+//         maxHeight: { md: "100vh" },
+//         overflow: { xs: "auto", md: "hidden" },
 //         bgcolor: "#090d16",
 //         px: { xs: 1.5, sm: 2, md: 3 },
 //         py: { xs: 1.5, md: 2 },
@@ -346,8 +322,8 @@
 //           mx: "auto",
 //           display: "flex",
 //           flexDirection: "column",
-//           flex: 1,
-//           minHeight: 0, // 🔥 critical
+//           flex: { md: 1 },
+//           minHeight: 0,
 //         }}
 //       >
 //         {/* ================= HEADER BANNER ================= */}
@@ -360,7 +336,7 @@
 //             gap={2}
 //           >
 //             {/* Left: Title block */}
-//             <Box>
+//             <Box sx={{ width: { xs: "100%", md: "auto" } }}>
 //               <Box display="flex" alignItems="center" gap={1} mb={0.3}>
 //                 <FiberManualRecord sx={{ fontSize: 10, color: "#10b981" }} />
 //                 <Typography
@@ -380,9 +356,10 @@
 //                 variant="h4"
 //                 fontWeight="800"
 //                 sx={{
-//                   fontSize: { xs: "1.2rem", sm: "1.5rem", md: "1.7rem" },
+//                   fontSize: { xs: "1.1rem", sm: "1.4rem", md: "1.7rem" },
 //                   letterSpacing: 0.5,
 //                   color: "#ffffff",
+//                   lineHeight: 1.2,
 //                 }}
 //               >
 //                 VEHICLE LOADING & SETTLEMENT
@@ -390,44 +367,52 @@
 
 //               <Typography
 //                 variant="caption"
-//                 sx={{ color: "#9ca3af", mt: 0.3, display: "block" }}
+//                 sx={{
+//                   color: "#9ca3af",
+//                   mt: 0.5,
+//                   display: "block",
+//                   fontSize: { xs: "0.68rem", sm: "0.75rem" },
+//                 }}
 //               >
 //                 Select any module below to enter stock, returns, credits,
 //                 payments, cash notes, or view final settlement.
 //               </Typography>
 //             </Box>
 
-//             {/* Right: Products + Customers buttons */}
+//             {/* Right: Buttons */}
 //             <Box
 //               display="flex"
 //               gap={1.2}
 //               flexWrap="wrap"
-//               sx={{ width: { xs: "100%", md: "auto" } }}
+//               sx={{
+//                 width: { xs: "100%", md: "auto" },
+//                 justifyContent: { xs: "stretch", md: "flex-end" },
+//               }}
 //             >
-
 //               <Button
-//   variant="outlined"
-//   startIcon={<ReceiptLong sx={{ fontSize: 18 }} />}
-//   onClick={() => navigate("/customer-ledger")}
-//   sx={{
-//     color: "#34d399",
-//     borderColor: "rgba(52, 211, 153, 0.4)",
-//     fontWeight: 700,
-//     textTransform: "none",
-//     borderRadius: "10px",
-//     px: 2,
-//     py: 0.9,
-//     fontSize: "0.78rem",
-//     flex: { xs: 1, md: "none" },
-//     "&:hover": {
-//       borderColor: "#34d399",
-//       bgcolor: "rgba(52, 211, 153, 0.08)",
-//       boxShadow: "0 6px 16px rgba(52, 211, 153, 0.15)",
-//     },
-//   }}
-// >
-//   Customer Ledger
-// </Button>
+//                 variant="outlined"
+//                 startIcon={<ReceiptLong sx={{ fontSize: 18 }} />}
+//                 onClick={() => navigate("/customer-ledger")}
+//                 sx={{
+//                   color: "#34d399",
+//                   borderColor: "rgba(52, 211, 153, 0.4)",
+//                   fontWeight: 700,
+//                   textTransform: "none",
+//                   borderRadius: "10px",
+//                   px: 2,
+//                   py: 0.9,
+//                   fontSize: "0.78rem",
+//                   flex: { xs: "1 1 45%", md: "none" },
+//                   whiteSpace: "nowrap",
+//                   "&:hover": {
+//                     borderColor: "#34d399",
+//                     bgcolor: "rgba(52, 211, 153, 0.08)",
+//                     boxShadow: "0 6px 16px rgba(52, 211, 153, 0.15)",
+//                   },
+//                 }}
+//               >
+//                  Ledger
+//               </Button>
 
 //               <Button
 //                 variant="outlined"
@@ -442,7 +427,8 @@
 //                   px: 2,
 //                   py: 0.9,
 //                   fontSize: "0.78rem",
-//                   flex: { xs: 1, md: "none" },
+//                   flex: { xs: "1 1 45%", md: "none" },
+//                   whiteSpace: "nowrap",
 //                   "&:hover": {
 //                     borderColor: "#c084fc",
 //                     bgcolor: "rgba(192, 132, 252, 0.08)",
@@ -452,8 +438,6 @@
 //               >
 //                 Products
 //               </Button>
-
-
 
 //               <Button
 //                 variant="outlined"
@@ -468,7 +452,8 @@
 //                   px: 2,
 //                   py: 0.9,
 //                   fontSize: "0.78rem",
-//                   flex: { xs: 1, md: "none" },
+//                   flex: { xs: "1 1 45%", md: "none" },
+//                   whiteSpace: "nowrap",
 //                   "&:hover": {
 //                     borderColor: "#38bdf8",
 //                     bgcolor: "rgba(56, 189, 248, 0.08)",
@@ -483,17 +468,16 @@
 //         </DarkBanner>
 
 //         {/* ================= METRICS SUMMARY BAR ================= */}
-//         <Grid
-//           container
-//           spacing={1.5}
-//           sx={{ mb: 1.5, flexShrink: 0 }}
-//         >
+//         <Grid container spacing={1.5} sx={{ mb: 1.5, flexShrink: 0 }}>
 //           {summaryMetrics.map((metric, index) => (
 //             <Grid size={{ xs: 6, sm: 6, md: 3 }} key={index}>
 //               <MetricCard>
 //                 <Typography
 //                   variant="caption"
-//                   sx={{ color: "#9ca3af", fontSize: "0.7rem" }}
+//                   sx={{
+//                     color: "#9ca3af",
+//                     fontSize: { xs: "0.65rem", sm: "0.7rem" },
+//                   }}
 //                 >
 //                   {metric.label}
 //                 </Typography>
@@ -503,7 +487,7 @@
 //                   sx={{
 //                     color: metric.color,
 //                     mt: 0.3,
-//                     fontSize: { xs: "1rem", sm: "1.1rem" },
+//                     fontSize: { xs: "0.9rem", sm: "1.05rem" },
 //                   }}
 //                 >
 //                   {metric.amount}
@@ -603,7 +587,6 @@
 
 
 
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -617,7 +600,7 @@ import {
   Chip,
   Button,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { styled, useTheme } from "@mui/material/styles";
 import {
   LocalShipping,
   AssignmentReturn,
@@ -634,34 +617,52 @@ import {
   AltRoute,
 } from "@mui/icons-material";
 
-// ===================== STYLED DARK COMPONENTS =====================
+// ===================== THEME HELPER =====================
+const isDark = (theme: any) => theme.palette.mode === "dark";
 
-const DarkBanner = styled(Box)(() => ({
-  backgroundColor: "#0d1527",
+// ===================== STYLED COMPONENTS =====================
+
+const DarkBanner = styled(Box)(({ theme }) => ({
+  backgroundColor: isDark(theme) ? "#0d1527" : "#ffffff",
   borderRadius: "16px",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
+  border: isDark(theme)
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(15, 23, 42, 0.08)",
   padding: "16px 22px",
   marginBottom: "12px",
-  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+  boxShadow: isDark(theme)
+    ? "0 10px 30px rgba(0, 0, 0, 0.5)"
+    : "0 6px 20px rgba(15, 23, 42, 0.06)",
   flexShrink: 0,
+  transition: "all 0.3s ease",
 }));
 
-const MetricCard = styled(Box)(() => ({
-  backgroundColor: "#111827",
+const MetricCard = styled(Box)(({ theme }) => ({
+  backgroundColor: isDark(theme) ? "#111827" : "#ffffff",
   borderRadius: "10px",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
+  border: isDark(theme)
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(15, 23, 42, 0.08)",
   padding: "12px 16px",
   height: "100%",
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
+  boxShadow: isDark(theme)
+    ? "0 4px 12px rgba(0, 0, 0, 0.25)"
+    : "0 2px 8px rgba(15, 23, 42, 0.04)",
+  transition: "all 0.3s ease",
 }));
 
-const ActionCard = styled(Card)(() => ({
+const ActionCard = styled(Card)(({ theme }) => ({
   borderRadius: "12px",
-  backgroundColor: "#111827",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  boxShadow: "0 6px 16px rgba(0, 0, 0, 0.35)",
+  backgroundColor: isDark(theme) ? "#111827" : "#ffffff",
+  border: isDark(theme)
+    ? "1px solid rgba(255, 255, 255, 0.08)"
+    : "1px solid rgba(15, 23, 42, 0.08)",
+  boxShadow: isDark(theme)
+    ? "0 6px 16px rgba(0, 0, 0, 0.35)"
+    : "0 4px 14px rgba(15, 23, 42, 0.06)",
   transition: "all 0.3s ease",
   height: "100%",
   minHeight: "170px",
@@ -708,6 +709,8 @@ const CardsScrollArea = styled(Box)(() => ({
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const dark = isDark(theme);
 
   const [dashboardData, setDashboardData] = useState({
     loadedStock: 0,
@@ -762,22 +765,22 @@ const Dashboard: React.FC = () => {
     {
       label: "Today Loaded Stock",
       amount: `₹ ${dashboardData.loadedStock.toFixed(2)}`,
-      color: "#34d399",
+      color: dark ? "#34d399" : "#059669",
     },
     {
       label: "Today Returns & Unsold",
       amount: `₹ ${dashboardData.returnsUnsold.toFixed(2)}`,
-      color: "#38bdf8",
+      color: dark ? "#38bdf8" : "#0284c7",
     },
     {
       label: "Today Credit Customer",
       amount: `₹ ${dashboardData.creditPayments.toFixed(2)}`,
-      color: "#fbbf24",
+      color: dark ? "#fbbf24" : "#d97706",
     },
     {
       label: "Today Notes Summary",
       amount: `₹ ${dashboardData.cashNotesExpenses.toFixed(2)}`,
-      color: "#c084fc",
+      color: dark ? "#c084fc" : "#9333ea",
     },
   ];
 
@@ -787,12 +790,12 @@ const Dashboard: React.FC = () => {
       title: "1. LOAD ITEMS",
       desc: "Add loaded inventory & rates",
       badgeText: "2 Items",
-      badgeBg: "#132e29",
-      badgeColor: "#34d399",
+      badgeBg: dark ? "#132e29" : "#d1fae5",
+      badgeColor: dark ? "#34d399" : "#047857",
       amountText: "Total: ₹ 8,000.00",
       icon: <LocalShipping />,
-      iconBg: "#132e29",
-      iconColor: "#34d399",
+      iconBg: dark ? "#132e29" : "#d1fae5",
+      iconColor: dark ? "#34d399" : "#059669",
       route: "/load-items",
     },
     {
@@ -800,12 +803,12 @@ const Dashboard: React.FC = () => {
       title: "2. RETURN ITEMS",
       desc: "Log unsold or damaged returns",
       badgeText: "1 Returns",
-      badgeBg: "#0c2a3a",
-      badgeColor: "#38bdf8",
+      badgeBg: dark ? "#0c2a3a" : "#e0f2fe",
+      badgeColor: dark ? "#38bdf8" : "#0369a1",
       amountText: "Total: ₹ 500.00",
       icon: <AssignmentReturn />,
-      iconBg: "#0c2a3a",
-      iconColor: "#38bdf8",
+      iconBg: dark ? "#0c2a3a" : "#e0f2fe",
+      iconColor: dark ? "#38bdf8" : "#0284c7",
       route: "/sale/return-list",
     },
     {
@@ -813,12 +816,12 @@ const Dashboard: React.FC = () => {
       title: "3. CREDIT CUSTOMER",
       desc: "Record credit sales & ledger",
       badgeText: "1 Entries",
-      badgeBg: "#332208",
-      badgeColor: "#fbbf24",
+      badgeBg: dark ? "#332208" : "#fef3c7",
+      badgeColor: dark ? "#fbbf24" : "#b45309",
       amountText: "Total: ₹ 1,500.00",
       icon: <Group />,
-      iconBg: "#332208",
-      iconColor: "#fbbf24",
+      iconBg: dark ? "#332208" : "#fef3c7",
+      iconColor: dark ? "#fbbf24" : "#d97706",
       route: "/credit-customer-entry",
     },
     {
@@ -826,12 +829,12 @@ const Dashboard: React.FC = () => {
       title: "4. PAYMENT RECEIVED",
       desc: "Cash, UPI & Online receipts",
       badgeText: "1 Payments",
-      badgeBg: "#1e1b4b",
-      badgeColor: "#a78bfa",
+      badgeBg: dark ? "#1e1b4b" : "#ede9fe",
+      badgeColor: dark ? "#a78bfa" : "#6d28d9",
       amountText: "Total: ₹ 2,000.00",
       icon: <Payments />,
-      iconBg: "#1e1b4b",
-      iconColor: "#a78bfa",
+      iconBg: dark ? "#1e1b4b" : "#ede9fe",
+      iconColor: dark ? "#a78bfa" : "#7c3aed",
       route: "/payment-received-entry",
     },
     {
@@ -839,12 +842,12 @@ const Dashboard: React.FC = () => {
       title: "5. NOTE SUMMARY",
       desc: "Currency denomination counter",
       badgeText: "Cash Counter",
-      badgeBg: "#2e1065",
-      badgeColor: "#c084fc",
+      badgeBg: dark ? "#2e1065" : "#f3e8ff",
+      badgeColor: dark ? "#c084fc" : "#7e22ce",
       amountText: "Cash Total: ₹ 5,300.00",
       icon: <PointOfSale />,
-      iconBg: "#2e1065",
-      iconColor: "#c084fc",
+      iconBg: dark ? "#2e1065" : "#f3e8ff",
+      iconColor: dark ? "#c084fc" : "#9333ea",
       route: "/note-summary-entry",
     },
     {
@@ -852,12 +855,12 @@ const Dashboard: React.FC = () => {
       title: "6. EXPENSES ENTRY",
       desc: "Fuel, toll, food & trip costs",
       badgeText: "1 Expenses",
-      badgeBg: "#31121d",
-      badgeColor: "#f43f5e",
+      badgeBg: dark ? "#31121d" : "#ffe4e6",
+      badgeColor: dark ? "#f43f5e" : "#be123c",
       amountText: "Total: ₹ 1,800.00",
       icon: <LocalGasStation />,
-      iconBg: "#31121d",
-      iconColor: "#f43f5e",
+      iconBg: dark ? "#31121d" : "#ffe4e6",
+      iconColor: dark ? "#f43f5e" : "#e11d48",
       route: "/expenses-entry",
     },
     {
@@ -865,12 +868,12 @@ const Dashboard: React.FC = () => {
       title: "7. FINAL CALCULATION",
       desc: "Compute final settlement numbers",
       badgeText: "Auto Compute",
-      badgeBg: "#0f2f2c",
-      badgeColor: "#2dd4bf",
+      badgeBg: dark ? "#0f2f2c" : "#ccfbf1",
+      badgeColor: dark ? "#2dd4bf" : "#0f766e",
       amountText: "Run calculation",
       icon: <Calculate />,
-      iconBg: "#0f2f2c",
-      iconColor: "#2dd4bf",
+      iconBg: dark ? "#0f2f2c" : "#ccfbf1",
+      iconColor: dark ? "#2dd4bf" : "#14b8a6",
       route: "/final-calculation",
     },
     {
@@ -878,12 +881,12 @@ const Dashboard: React.FC = () => {
       title: "8. VIEW Statement",
       desc: "Detailed route settlement view",
       badgeText: "Report",
-      badgeBg: "#0f2f2c",
-      badgeColor: "#2dd4bf",
+      badgeBg: dark ? "#0f2f2c" : "#ccfbf1",
+      badgeColor: dark ? "#2dd4bf" : "#0f766e",
       amountText: "Open report",
       icon: <Visibility />,
-      iconBg: "#0f2f2c",
-      iconColor: "#2dd4bf",
+      iconBg: dark ? "#0f2f2c" : "#ccfbf1",
+      iconColor: dark ? "#2dd4bf" : "#14b8a6",
       route: "/view-settlement",
     },
     {
@@ -891,12 +894,12 @@ const Dashboard: React.FC = () => {
       title: "9. ROUTE & DIRECTION / SALE",
       desc: "Manage vehicle route, direction & sale",
       badgeText: "Route & Sale",
-      badgeBg: "#0f2f2c",
-      badgeColor: "#2dd4bf",
+      badgeBg: dark ? "#0f2f2c" : "#ccfbf1",
+      badgeColor: dark ? "#2dd4bf" : "#0f766e",
       amountText: "Open module",
       icon: <AltRoute />,
-      iconBg: "#0f2f2c",
-      iconColor: "#2dd4bf",
+      iconBg: dark ? "#0f2f2c" : "#ccfbf1",
+      iconColor: dark ? "#2dd4bf" : "#14b8a6",
       route: "/route-direction-sale",
     },
   ];
@@ -907,13 +910,14 @@ const Dashboard: React.FC = () => {
         minHeight: { xs: "100dvh", md: "85vh" },
         maxHeight: { md: "100vh" },
         overflow: { xs: "auto", md: "hidden" },
-        bgcolor: "#090d16",
+        bgcolor: dark ? "#090d16" : "#f1f5f9",
         px: { xs: 1.5, sm: 2, md: 3 },
         py: { xs: 1.5, md: 2 },
-        color: "#ffffff",
+        color: dark ? "#ffffff" : "#0f172a",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
+        transition: "background-color 0.3s ease, color 0.3s ease",
       }}
     >
       <Box
@@ -944,7 +948,7 @@ const Dashboard: React.FC = () => {
                   variant="caption"
                   fontWeight="bold"
                   sx={{
-                    color: "#10b981",
+                    color: dark ? "#10b981" : "#059669",
                     letterSpacing: 0.5,
                     fontSize: "0.7rem",
                   }}
@@ -959,7 +963,7 @@ const Dashboard: React.FC = () => {
                 sx={{
                   fontSize: { xs: "1.1rem", sm: "1.4rem", md: "1.7rem" },
                   letterSpacing: 0.5,
-                  color: "#ffffff",
+                  color: dark ? "#ffffff" : "#0f172a",
                   lineHeight: 1.2,
                 }}
               >
@@ -969,7 +973,7 @@ const Dashboard: React.FC = () => {
               <Typography
                 variant="caption"
                 sx={{
-                  color: "#9ca3af",
+                  color: dark ? "#9ca3af" : "#64748b",
                   mt: 0.5,
                   display: "block",
                   fontSize: { xs: "0.68rem", sm: "0.75rem" },
@@ -995,8 +999,10 @@ const Dashboard: React.FC = () => {
                 startIcon={<ReceiptLong sx={{ fontSize: 18 }} />}
                 onClick={() => navigate("/customer-ledger")}
                 sx={{
-                  color: "#34d399",
-                  borderColor: "rgba(52, 211, 153, 0.4)",
+                  color: dark ? "#34d399" : "#059669",
+                  borderColor: dark
+                    ? "rgba(52, 211, 153, 0.4)"
+                    : "rgba(5, 150, 105, 0.4)",
                   fontWeight: 700,
                   textTransform: "none",
                   borderRadius: "10px",
@@ -1006,13 +1012,15 @@ const Dashboard: React.FC = () => {
                   flex: { xs: "1 1 45%", md: "none" },
                   whiteSpace: "nowrap",
                   "&:hover": {
-                    borderColor: "#34d399",
-                    bgcolor: "rgba(52, 211, 153, 0.08)",
+                    borderColor: dark ? "#34d399" : "#059669",
+                    bgcolor: dark
+                      ? "rgba(52, 211, 153, 0.08)"
+                      : "rgba(5, 150, 105, 0.08)",
                     boxShadow: "0 6px 16px rgba(52, 211, 153, 0.15)",
                   },
                 }}
               >
-                 Ledger
+                Ledger
               </Button>
 
               <Button
@@ -1020,8 +1028,10 @@ const Dashboard: React.FC = () => {
                 startIcon={<Inventory2 sx={{ fontSize: 18 }} />}
                 onClick={() => navigate("/products")}
                 sx={{
-                  color: "#c084fc",
-                  borderColor: "rgba(192, 132, 252, 0.4)",
+                  color: dark ? "#c084fc" : "#7e22ce",
+                  borderColor: dark
+                    ? "rgba(192, 132, 252, 0.4)"
+                    : "rgba(126, 34, 206, 0.4)",
                   fontWeight: 700,
                   textTransform: "none",
                   borderRadius: "10px",
@@ -1031,8 +1041,10 @@ const Dashboard: React.FC = () => {
                   flex: { xs: "1 1 45%", md: "none" },
                   whiteSpace: "nowrap",
                   "&:hover": {
-                    borderColor: "#c084fc",
-                    bgcolor: "rgba(192, 132, 252, 0.08)",
+                    borderColor: dark ? "#c084fc" : "#7e22ce",
+                    bgcolor: dark
+                      ? "rgba(192, 132, 252, 0.08)"
+                      : "rgba(126, 34, 206, 0.08)",
                     boxShadow: "0 6px 16px rgba(192, 132, 252, 0.15)",
                   },
                 }}
@@ -1045,8 +1057,10 @@ const Dashboard: React.FC = () => {
                 startIcon={<People sx={{ fontSize: 18 }} />}
                 onClick={() => navigate("/customer-entry")}
                 sx={{
-                  color: "#38bdf8",
-                  borderColor: "rgba(56, 189, 248, 0.4)",
+                  color: dark ? "#38bdf8" : "#0284c7",
+                  borderColor: dark
+                    ? "rgba(56, 189, 248, 0.4)"
+                    : "rgba(2, 132, 199, 0.4)",
                   fontWeight: 700,
                   textTransform: "none",
                   borderRadius: "10px",
@@ -1056,8 +1070,10 @@ const Dashboard: React.FC = () => {
                   flex: { xs: "1 1 45%", md: "none" },
                   whiteSpace: "nowrap",
                   "&:hover": {
-                    borderColor: "#38bdf8",
-                    bgcolor: "rgba(56, 189, 248, 0.08)",
+                    borderColor: dark ? "#38bdf8" : "#0284c7",
+                    bgcolor: dark
+                      ? "rgba(56, 189, 248, 0.08)"
+                      : "rgba(2, 132, 199, 0.08)",
                     boxShadow: "0 6px 16px rgba(56, 189, 248, 0.15)",
                   },
                 }}
@@ -1076,8 +1092,9 @@ const Dashboard: React.FC = () => {
                 <Typography
                   variant="caption"
                   sx={{
-                    color: "#9ca3af",
+                    color: dark ? "#9ca3af" : "#64748b",
                     fontSize: { xs: "0.65rem", sm: "0.7rem" },
+                    fontWeight: 600,
                   }}
                 >
                   {metric.label}
@@ -1138,7 +1155,7 @@ const Dashboard: React.FC = () => {
                       variant="subtitle1"
                       fontWeight="bold"
                       sx={{
-                        color: "#ffffff",
+                        color: dark ? "#ffffff" : "#0f172a",
                         fontSize: { xs: "0.85rem", sm: "0.9rem" },
                         lineHeight: 1.2,
                       }}
@@ -1149,7 +1166,7 @@ const Dashboard: React.FC = () => {
                     <Typography
                       variant="caption"
                       sx={{
-                        color: "#9ca3af",
+                        color: dark ? "#9ca3af" : "#64748b",
                         display: "block",
                         minHeight: "30px",
                         mt: 0.3,
